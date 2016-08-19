@@ -17,5 +17,5 @@ declare_args() {
   use_ozone = false
 
   # Whether we should use glib, a low level C utility library.
-  use_glib = false
+  use_glib = is_linux
 }
