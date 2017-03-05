@@ -8,39 +8,27 @@ const {execSync, spawnSync} = require('child_process')
 // Switch to root dir.
 process.chdir(path.dirname(__dirname))
 
-// Common paths.
-let ninja = path.join('tools', 'build', process.platform, 'ninja')
-let gn = path.join('tools', 'build', process.platform, 'gn')
+// We are not using toolchain from depot_tools.
+process.env.DEPOT_TOOLS_WIN_TOOLCHAIN = 0
 
-if (process.platform === 'win32') {
-  ninja += '.exe'
-  gn += '.exe'
-}
-
-// Print command output by default.
-const execSyncWrapper = (command, options = { stdio: 'inherit' }) => {
-  return execSync(command, options)
-}
+// Expose ninja and gn to PATH.
+const binaries_dir = path.resolve('tools', 'build', process.platform)
+process.env.PATH = `${binaries_dir}${path.delimiter}${process.env.PATH}`
 
 // Parse args.
 let verbose = false
-let dir = 'out/Debug'
-const args = process.argv.slice(2).filter((arg) => {
-  if (arg.includes('/') && !arg.startsWith('-')) {
-    dir = arg
-    return false
-  } else if (arg === '-v' || arg === '--verbose') {
+process.argv = process.argv.slice(2).filter((arg) => {
+  if (arg === '-v' || arg === '--verbose') {
     verbose = true
-    return true
+    return false
   } else {
     return true
   }
 })
 
-// Run command and pass args.
-const runSync = (command, commandArgs = []) => {
-  commandArgs = commandArgs.concat(dir).concat(args)
-  return spawnSync(command, commandArgs, { stdio: 'inherit' })
+// Print command output by default.
+const execSyncWrapper = (command, options = { stdio: 'inherit' }) => {
+  return execSync(command, options)
 }
 
 // Don't log out Node.js stack trace.
@@ -52,4 +40,4 @@ if (!verbose) {
 }
 
 // Export public APIs.
-module.exports = { ninja, gn, runSync, execSync: execSyncWrapper }
+module.exports = { verbose, execSync: execSyncWrapper }
