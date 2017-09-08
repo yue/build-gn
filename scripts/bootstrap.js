@@ -46,9 +46,12 @@ const releaseConfig = [
   'allow_posix_link_time_opt=false',
 ]
 
-// Generate linker map for Linux.
-if (targetOs == 'linux')
+if (targetOs == 'linux') {
+  // Generate linker map for Linux.
   releaseConfig.push('generate_linker_map=true')
+  // This flag caused weird compilation errors when building on Linux.
+  debugConfig.push('enable_iterator_debugging=false')
+}
 
 gen('out/Debug', debugConfig)
 gen('out/Release', releaseConfig)
