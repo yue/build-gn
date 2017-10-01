@@ -40,6 +40,8 @@ for (let f of files) {
   addFileToZip(gnzip, f, '.')
 }
 const gnname = process.platform === 'win32' ? 'gn.exe' : 'gn'
+if (process.platform === 'linux')
+  strip(`out/Release/${gnname}`)
 addFileToZip(gnzip, `out/Release/${gnname}`, 'out/Release', '', {
   unixPermissions: '755'
 })
@@ -80,4 +82,11 @@ function searchFiles(dir, list = []) {
       searchFiles(p, list)
     return list
   }, list)
+}
+
+function strip(file) {
+  // TODO(zcbenz): Copy the debug symbols out before striping.
+  const strip = targetCpu.startsWith('arm') ? 'arm-linux-gnueabihf-strip'
+                                            : 'strip'
+  execSync(`${strip} ${file}`)
 }
