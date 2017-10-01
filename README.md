@@ -15,6 +15,20 @@ requiring fundamental build files to exist inside the projects.
 
 Changes to GN can be found at [yue/gn](https://github.com/yue/gn).
 
+## Notes
+
+macOS:
+
+* `tools/clang/scripts/update.py` must be present to download clang.
+
+Linux:
+
+* `tools/clang/scripts/update.py` must be present to download clang.
+
+Windows:
+
+* Must set `DEPOT_TOOLS_WIN_TOOLCHAIN=0` when calling gn.
+
 ## Disclaimer
 
 This project is not affliated with Chromium or Google, use it at your own risk.
