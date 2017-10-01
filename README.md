@@ -23,7 +23,7 @@ macOS:
 
 Linux:
 
-* `tools/clang/scripts/update.py` must be present to download clang.
+* Must pass `--args="is_clang=false use_sysroot=false"` to `gn gen`.
 
 Windows:
 
