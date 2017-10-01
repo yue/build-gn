@@ -32,12 +32,14 @@ for (let f of files) {
   addFileToZip(gnzip, f, '.')
 }
 const gnname = process.platform === 'win32' ? 'gn.exe' : 'gn'
-addFileToZip(gnzip, `out/Release/${gnname}`, 'out/Release')
+addFileToZip(gnzip, `out/Release/${gnname}`, 'out/Release', '', {
+  unixPermissions: '755'
+})
 const zipname = `gn_${version}_${targetOs}_${targetCpu}`
-gnzip.generateNodeStream({streamFiles:true})
+gnzip.generateNodeStream({streamFiles:true, platform: process.platform})
    .pipe(fs.createWriteStream(`out/Release/${zipname}.zip`))
 
-function addFileToZip(zip, file, base, prefix = '') {
+function addFileToZip(zip, file, base, prefix='', options={}) {
   const stat = fs.statSync(file)
   if (stat.isDirectory()) {
     const subfiles = fs.readdirSync(file)
@@ -47,7 +49,8 @@ function addFileToZip(zip, file, base, prefix = '') {
     const filename = path.basename(file)
     let p = path.relative(base, file)
     p = path.join(prefix, path.dirname(p), filename)
-    zip.file(p, fs.readFileSync(file))
+    options.binary = true
+    zip.file(p, fs.readFileSync(file), options)
   }
   return zip
 }
