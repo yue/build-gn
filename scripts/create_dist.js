@@ -10,7 +10,15 @@ const fs = require('fs')
 const path = require('path')
 const JSZip = require('./libs/jszip')
 
-// Blacklist for file extensions
+// Blacklist folders.
+const folderBlacklist = [
+  'build/linux/debian_jessie_amd64-sysroot',
+  'build/linux/debian_jessie_i386-sysroot',
+  'build/linux/debian_jessie_arm-sysroot',
+  'build/linux/debian_jessie_arm64-sysroot',
+]
+
+// Blacklist for file extensions.
 const extensionBlacklist = [
   '.git',
   '.pyc',
@@ -62,6 +70,10 @@ function searchFiles(dir, list = []) {
     if (extensionBlacklist.includes(path.extname(p)) ||
         extensionBlacklist.includes(path.basename(p)))
       return list
+    for (const f of folderBlacklist) {
+      if (p.startsWith(f))
+        return list
+    }
     if (stat.isFile())
       list.push(p)
     else if (stat.isDirectory())

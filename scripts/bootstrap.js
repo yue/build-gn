@@ -44,8 +44,6 @@ const releaseConfig = [
 ]
 
 if (targetOs == 'linux') {
-  // Generate linker map for Linux.
-  releaseConfig.push('generate_linker_map=true')
   // This flag caused weird compilation errors when building on Linux.
   debugConfig.push('enable_iterator_debugging=false')
 }
