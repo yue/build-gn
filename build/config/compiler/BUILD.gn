@@ -1154,7 +1154,8 @@ config("default_warnings") {
 
     # use_xcode_clang only refers to the iOS toolchain, host binaries use
     # chromium's clang always.
-    if (!is_nacl && (!use_xcode_clang || current_toolchain == host_toolchain)) {
+    # PATCH(build-gn): use_xcode_clang is also enabled for macOS.
+    if (!is_nacl && !use_xcode_clang) {
       # Flags NaCl (Clang 3.7) and Xcode 7.3 (Clang clang-703.0.31) do not
       # recognize.
       cflags += [
@@ -1173,7 +1174,8 @@ config("default_warnings") {
         # TODO(thakis ): https://crbug.com/683349
         "-Wno-user-defined-warnings",
       ]
-    } else if (use_xcode_clang && xcode_version_int >= 830) {
+    # PATCH(build-gn): xcode_version_int is not defined for macOS.
+    } else if (use_xcode_clang && false) {
       # This is necessary to allow a progressive transition from using xcode 8.0
       # to 8.3 or more recent. Remove when all bots are migrated to 8.3.
       cflags += [

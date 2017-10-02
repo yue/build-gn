@@ -17,10 +17,6 @@ Changes to GN can be found at [yue/gn](https://github.com/yue/gn).
 
 ## Notes
 
-macOS:
-
-* `tools/clang/scripts/update.py` must be present to download clang.
-
 Linux:
 
 * Must pass `--args="is_clang=false use_sysroot=false"` to `gn gen`.

@@ -46,6 +46,12 @@ const releaseConfig = [
 if (targetOs == 'linux') {
   // This flag caused weird compilation errors when building on Linux.
   debugConfig.push('enable_iterator_debugging=false')
+  // Use prebuilt clang binaries.
+  commonConfig.push('is_clang=true')
+}
+if (targetOs == 'mac') {
+  // Use prebuilt clang binaries.
+  commonConfig.push('use_xcode_clang=false')
 }
 
 gen('out/Debug', debugConfig)
