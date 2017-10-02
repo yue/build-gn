@@ -18,7 +18,7 @@ const platform = {
   darwin: 'mac',
   win32: 'win',
 }[process.platform]
-const binaries_dir = path.resolve('tools', 'build', platform)
+const binaries_dir = path.resolve('buildtools', platform)
 process.env.PATH = `${binaries_dir}${path.delimiter}${process.env.PATH}`
 
 // Get yue's version.

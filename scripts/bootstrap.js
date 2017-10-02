@@ -50,6 +50,12 @@ if (targetOs == 'linux') {
   debugConfig.push('enable_iterator_debugging=false')
   // Use prebuilt clang binaries.
   commonConfig.push('is_clang=true')
+  // Link with libc++ statically.
+  commonConfig.push('use_custom_libcxx=true')
+  releaseConfig.push('libcpp_is_static=true')
+  if (targetCpu == 'arm') {
+    releaseConfig.push('fatal_linker_warnings=false')
+  }
 }
 if (targetOs == 'mac') {
   // Use prebuilt clang binaries.

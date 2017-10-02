@@ -32,11 +32,20 @@ fs.readdirSync('out/Release').forEach((f) => {
 
 // Zip the gn binary and build configurations.
 const gnzip = new JSZip()
-const files = searchFiles('build_overrides').concat(
-              searchFiles('build')).concat(
-              searchFiles('buildtools/third_party')).concat(
-              searchFiles('tools/gyp/pylib')).concat(
-              searchFiles('tools/cfi'))
+const files =
+  searchFiles('build_overrides').concat(
+  searchFiles('build')).concat(
+  searchFiles('buildtools/third_party/libc++/trunk/src')).concat(
+  searchFiles('buildtools/third_party/libc++/trunk/include')).concat(
+  searchFiles('buildtools/third_party/libc++abi/trunk/src')).concat(
+  searchFiles('buildtools/third_party/libc++abi/trunk/include')).concat(
+  searchFiles('buildtools/third_party/libunwind/trunk/src')).concat(
+  searchFiles('buildtools/third_party/libunwind/trunk/include')).concat(
+  searchFiles('tools/gyp/pylib')).concat(
+  searchFiles('tools/cfi'))
+addFileToZip(gnzip, 'buildtools/third_party/libc++/BUILD.gn', '.')
+addFileToZip(gnzip, 'buildtools/third_party/libc++abi/BUILD.gn', '.')
+addFileToZip(gnzip, 'buildtools/third_party/libunwind/BUILD.gn', '.')
 for (let f of files) {
   addFileToZip(gnzip, f, '.')
 }

@@ -39,11 +39,6 @@ group("deps") {
       "//tools/valgrind/asan/",
       "$clang_base_path/bin/llvm-symbolizer${exe}",
     ]
-    if (is_linux) {
-      # llvm-symbolizer needs this.
-      data += [ "$clang_base_path/lib/libstdc++.so.6" ]
-    }
-
     if (use_prebuilt_instrumented_libraries ||
         use_locally_built_instrumented_libraries) {
       deps += [ "//third_party/instrumented_libraries:deps" ]
@@ -366,18 +361,25 @@ config("cfi_flags") {
     }
 
     if (use_cfi_diag) {
-      cflags += [
-        "-fno-sanitize-trap=cfi",
-        "-fno-inline-functions",
-        "-fno-inline",
-        "-fno-omit-frame-pointer",
-        "-O1",
-      ]
+      cflags += [ "-fno-sanitize-trap=cfi" ]
+      if (is_win) {
+        cflags += [
+          "/Oy-",
+          "/Ob0",
+        ]
+      } else {
+        cflags += [
+          "-fno-inline-functions",
+          "-fno-inline",
+          "-fno-omit-frame-pointer",
+          "-O1",
+        ]
+      }
       if (use_cfi_recover) {
         cflags += [ "-fsanitize-recover=cfi" ]
       }
     } else {
-      defines = [ "CFI_ENFORCEMENT" ]
+      defines = [ "CFI_ENFORCEMENT_TRAP" ]
     }
   }
 }

@@ -25,7 +25,6 @@ const filename = platform === 'win' ? 'gn.exe' : 'gn'
 const gnPath = path.join(buildtools, platform, filename)
 
 if (!fs.existsSync(gnPath)) {
-  fs.mkdirSync(path.join(buildtools, platform))
   downloadGn(sha1[platform], gnPath)
 }
 
