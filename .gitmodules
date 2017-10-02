@@ -16,10 +16,6 @@
 [submodule "base"]
 	path = base
 	url = https://chromium.googlesource.com/chromium/src/base
-[submodule "build/toolchain"]
-	path = build/toolchain
-	url = https://chromium.googlesource.com/chromium/src/build/toolchain
-  ignore = untracked
 [submodule "third_party/ced/src"]
 	path = third_party/ced/src
 	url = https://github.com/google/compact_enc_det.git
