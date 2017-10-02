@@ -14,6 +14,7 @@ let sysrootArch = {
   arm64: 'arm64',
 }[targetCpu]
 
+execSync('node scripts/update_gn.js')
 if (process.platform !== 'win32') {
   execSync('python tools/clang/scripts/update.py')
 }

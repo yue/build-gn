@@ -13,7 +13,12 @@ process.chdir(path.dirname(__dirname))
 process.env.DEPOT_TOOLS_WIN_TOOLCHAIN = 0
 
 // Expose ninja and gn to PATH.
-const binaries_dir = path.resolve('tools', 'build', process.platform)
+const platform = {
+  linux: 'linux64',
+  darwin: 'mac',
+  win32: 'win',
+}[process.platform]
+const binaries_dir = path.resolve('tools', 'build', platform)
 process.env.PATH = `${binaries_dir}${path.delimiter}${process.env.PATH}`
 
 // Get yue's version.

@@ -7,6 +7,9 @@
 /build/linux/debian_jessie_i386-sysroot/
 /build/linux/debian_jessie_arm-sysroot/
 /build/linux/debian_jessie_arm64-sysroot/
+/buildtools/linux64/
+/buildtools/mac/
+/buildtools/win/
 node_modules/
 *.xcodeproj
 *.swp

@@ -9,15 +9,23 @@ const fs    = require('fs')
 const path  = require('path')
 
 const sha1 = {
-  linux: '2d79b4acffac0b084f250a9699f670d41f164864',
-  darwin: 'b8db422af70c716836c579dad9153c687ab54f7c',
-  win32: '3b6a35d309aeeba61ba945d91752d1d65acf3d4f',
+  linux64: '15cc6942069e0463e11752fcdf2244dbeec78a43',
+  mac: 'f04ec3c6cffc5cf85275b498cbd02e4777b4c518',
+  win: 'a556e2e8f277452c5c54e3136e4ef123625006b5',
 }
 
-const buildtools = path.resolve(__dirname, '..', 'tools', 'build')
-for (const platform in sha1) {
-  const filename = platform === 'win32' ? 'gn.exe' : 'gn'
-  const gnPath = path.join(buildtools, platform, filename)
+const platform = {
+  linux: 'linux64',
+  darwin: 'mac',
+  win32: 'win',
+}[process.platform]
+
+const buildtools = path.resolve(__dirname, '..', 'buildtools')
+const filename = platform === 'win' ? 'gn.exe' : 'gn'
+const gnPath = path.join(buildtools, platform, filename)
+
+if (!fs.existsSync(gnPath)) {
+  fs.mkdirSync(path.join(buildtools, platform))
   downloadGn(sha1[platform], gnPath)
 }
 

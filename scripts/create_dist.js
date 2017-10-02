@@ -34,6 +34,7 @@ fs.readdirSync('out/Release').forEach((f) => {
 const gnzip = new JSZip()
 const files = searchFiles('build_overrides').concat(
               searchFiles('build')).concat(
+              searchFiles('buildtools/third_party')).concat(
               searchFiles('tools/gyp/pylib')).concat(
               searchFiles('tools/cfi'))
 for (let f of files) {
