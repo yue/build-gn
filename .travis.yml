@@ -1,0 +1,63 @@
+git:
+  depth: 10
+notifications:
+  email: false
+
+language: node_js
+node_js:
+  - "8"
+os:
+  - osx
+  - linux
+osx_image: xcode8.3
+dist: trusty
+
+addons:
+  apt:
+    sources:
+      - ubuntu-toolchain-r-test
+      - sourceline: 'ppa:webkit-team/ppa'
+    packages:
+      - gcc-4.8-multilib
+      - g++-4.8-multilib
+      - gcc-arm-linux-gnueabihf
+      - g++-arm-linux-gnueabihf
+      - linux-libc-dev:i386
+      - libc6-dev-armhf-cross
+      - linux-libc-dev-armhf-cross
+      - binutils-aarch64-linux-gnu
+
+env:
+  - TARGET_CPU=x64
+
+matrix:
+  include:
+    - os: linux
+      env:
+        - TARGET_CPU=x86
+    - os: linux
+      env:
+        - TARGET_CPU=arm
+
+before_script:
+  - export GN_VERSION=$(git describe --always --tags)
+
+script:
+  - node scripts/bootstrap.js --target-cpu=$TARGET_CPU
+  - node scripts/build.js out/Release
+  - node scripts/create_dist.js
+
+deploy:
+  provider: releases
+  api_key:
+    secure: Oy8eKtgN8TtE0ULgzGb5Z0+HwmrCwqptLiMOsuPg8Iw85FQJn9DjgvzbLWcLkS0PIaei914LNPpUvgYwQUOWqfMWsE+4vf9h3N6NKJVT/5LRCbEQBU2eYf90MmkbfY7VJECT11m1jyWSUAre3DawDfw1jiT7QIWkcRp334UG8Hw15FGOR9pbFgCJI5ziKwBsRDcQpDO1rkxHYNUXrEkdj3l6ycv/gCQwMfpPneRqrt/cx/EsmOy3Cfyg1vaWKzvLsnGAWzAy8UoXX629L/AuDBnewIXfOFBwwbslyJ/sc125K8lk1ltP+SBz4Ca+6NszJO2ADH/bbersXebEb4hkFyxNsHMMENb+2vIWiSxqkyFiS7UM15PHZ1xobqmT9xL079CRpyekYysryObL6QT0SlNCLlzTtmDkVC5i/TCsW6ilpoKYjZEV5OekPoJO/fP7D4QrIZjvKnYPPmsBsP86QV2H5/AMj2y7NmfLqCnh8k9QHCdcOQdnmxfIvMwt9+TEgAv++HFREk7xaCWJpsoYQaNGlTqim2ALyZYpEzyGeH98crSoUiSIAHWcByAbYgweQT3xOgR5a4WFjQSNTaAYZVa6MhmUh8O3Kj3PjYGrFtaNHcVSzCNIX6H2V9/sWv0hIQmglBHZ6Iwtf8OhBDZ4aloa836hEDR7vwpfU7s4914=
+  file_glob: true
+  file: out/Release/*.zip
+  skip_cleanup: true
+  overwrite: true
+  draft: true
+  tag_name: ${GN_VERSION}
+  name: Yue ${GN_VERSION}
+  body: (placeholder)
+  on:
+    tags: true
