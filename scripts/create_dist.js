@@ -49,10 +49,20 @@ addFileToZip(gnzip, 'buildtools/third_party/libunwind/BUILD.gn', '.')
 for (let f of files) {
   addFileToZip(gnzip, f, '.')
 }
+
+const platform = {
+  linux: 'linux64',
+  darwin: 'mac',
+  win32: 'win',
+}[process.platform]
+const ninjaname = process.platform === 'win32' ? 'ninja.exe' : 'ninja'
+addFileToZip(gnzip, `buildtools/${platform}/${ninjaname}`, `buildtools/${platform}`)
+
 const gnname = process.platform === 'win32' ? 'gn.exe' : 'gn'
 if (process.platform === 'linux')
   strip(`out/Release/${gnname}`)
 addFileToZip(gnzip, `out/Release/${gnname}`, 'out/Release')
+
 const zipname = `gn_${version}_${targetOs}_${targetCpu}`
 gnzip.generateNodeStream({streamFiles:true, platform: process.platform})
    .pipe(fs.createWriteStream(`out/Release/${zipname}.zip`))
