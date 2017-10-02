@@ -34,7 +34,7 @@ fs.readdirSync('out/Release').forEach((f) => {
 const gnzip = new JSZip()
 const files = searchFiles('build_overrides').concat(
               searchFiles('build')).concat(
-              searchFiles('tools/gyp')).concat(
+              searchFiles('tools/gyp/pylib')).concat(
               searchFiles('tools/cfi'))
 for (let f of files) {
   addFileToZip(gnzip, f, '.')
@@ -42,25 +42,28 @@ for (let f of files) {
 const gnname = process.platform === 'win32' ? 'gn.exe' : 'gn'
 if (process.platform === 'linux')
   strip(`out/Release/${gnname}`)
-addFileToZip(gnzip, `out/Release/${gnname}`, 'out/Release', '', {
-  unixPermissions: '755'
-})
+addFileToZip(gnzip, `out/Release/${gnname}`, 'out/Release')
 const zipname = `gn_${version}_${targetOs}_${targetCpu}`
 gnzip.generateNodeStream({streamFiles:true, platform: process.platform})
    .pipe(fs.createWriteStream(`out/Release/${zipname}.zip`))
 
-function addFileToZip(zip, file, base, prefix='', options={}) {
+function addFileToZip(zip, file, base) {
   const stat = fs.statSync(file)
   if (stat.isDirectory()) {
     const subfiles = fs.readdirSync(file)
     for (let sub of subfiles)
       addFileToZip(zip, `${file}/${sub}`, base)
   } else if (stat.isFile()) {
-    const filename = path.basename(file)
-    let p = path.relative(base, file)
-    p = path.join(prefix, path.dirname(p), filename)
-    options.binary = true
-    zip.file(p, fs.readFileSync(file), options)
+    let options = {binary: true}
+    if (process.platform !== 'win32') {
+      try {
+        fs.accessSync(file, fs.constants.X_OK)
+        options.unixPermissions = '755'
+      } catch (e) {
+        options.unixPermissions = '644'
+      }
+    }
+    zip.file(path.relative(base, file), fs.readFileSync(file), options)
   }
   return zip
 }
