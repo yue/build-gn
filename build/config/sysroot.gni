@@ -15,7 +15,8 @@ declare_args() {
   # The absolute path to directory containing sysroots for linux 32 and 64bit
   target_sysroot_dir = "//build/linux"
 
-  use_sysroot = true
+  # PATCH(build-gn): Don't use sysroot by default on Linux.
+  use_sysroot = false
 }
 
 if (current_os == target_os && current_cpu == target_cpu &&

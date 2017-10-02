@@ -15,12 +15,6 @@ requiring fundamental build files to exist inside the projects.
 
 Changes to GN can be found at [yue/gn](https://github.com/yue/gn).
 
-## Notes
-
-Linux:
-
-* Must pass `--args="is_clang=false use_sysroot=false"` to `gn gen`.
-
 ## Disclaimer
 
 This project is not affliated with Chromium or Google, use it at your own risk.

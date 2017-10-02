@@ -33,12 +33,13 @@ const commonConfig = [
 const debugConfig = [
   'is_component_build=true',
   'is_debug=true',
-  'fatal_linker_warnings=false',
   'use_sysroot=false',
+  'fatal_linker_warnings=false',
 ]
 const releaseConfig = [
   'is_component_build=false',
   'is_debug=false',
+  'use_sysroot=true',
   'is_official_build=true',
   'allow_posix_link_time_opt=false',
 ]
