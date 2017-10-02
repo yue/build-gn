@@ -21,10 +21,6 @@ Linux:
 
 * Must pass `--args="is_clang=false use_sysroot=false"` to `gn gen`.
 
-Windows:
-
-* Must set `DEPOT_TOOLS_WIN_TOOLCHAIN=0` when calling gn.
-
 ## Disclaimer
 
 This project is not affliated with Chromium or Google, use it at your own risk.
