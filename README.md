@@ -40,7 +40,6 @@ node scripts/build.js
 ## Changes to official Chromium GN configurations
 
 * Added `use_chromium_config` and `chromium_config_dir` variables.
-* We stay at a relative old version where libc++ is not required on Linux.
 * Default args changed to `is_clang=false use_sysroot=false` on Linux.
 * Default args changed to `use_xcode_clang=true` on macOS.
 * The `DEPOT_TOOLS_WIN_TOOLCHAIN` is set to `0` by default on Windows.
