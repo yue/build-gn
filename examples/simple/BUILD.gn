@@ -1,0 +1,5 @@
+executable("test") {
+  sources = [
+    "main.cc",
+  ]
+}

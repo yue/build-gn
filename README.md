@@ -24,7 +24,7 @@ Changes to GN can be found at [yue/gn](https://github.com/yue/gn).
 4. Run `gn gen`.
 
 Example project files can be found under
-[test/projects](https://github.com/yue/build-gn/tree/master/tests/projects).
+[examples](https://github.com/yue/build-gn/tree/master/examples).
 
 ## Disclaimer
 

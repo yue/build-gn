@@ -46,6 +46,7 @@ script:
   - node scripts/bootstrap.js --target-cpu=$TARGET_CPU
   - node scripts/build.js out/Release
   - node scripts/create_dist.js
+  - node scripts/test.js
 
 deploy:
   provider: releases

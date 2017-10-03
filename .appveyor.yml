@@ -18,6 +18,7 @@ install:
   - cmd: node scripts/bootstrap.js --target-cpu=%TARGET_CPU%
   - cmd: node scripts/build.js out/Release
   - cmd: node scripts/create_dist.js
+  - cmd: node scripts/test.js
 
 artifacts:
   - path: 'out\Release\*.zip'
