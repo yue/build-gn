@@ -83,7 +83,12 @@ function addFileToZip(zip, file, base) {
         options.unixPermissions = '644'
       }
     }
-    zip.file(path.relative(base, file), fs.readFileSync(file), options)
+    let rp = path.relative(base, file)
+    if (process.platform === 'win32') {
+      // Some unzip tools force using / as file delimiter.
+      rp = rp.replace(/\\/g, '/')
+    }
+    zip.file(rp, fs.readFileSync(file), options)
   }
   return zip
 }
