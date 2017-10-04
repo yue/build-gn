@@ -95,7 +95,8 @@ declare_args() {
   strip_absolute_paths_from_debug_symbols = false
 
   # Allow projects that wish to stay on C++11 to override Chromium's default.
-  use_cxx11 = false
+  # PATCH(build-gn): It is too early for third parties to use C++14.
+  use_cxx11 = true
 
   # Strip the debug info of symbols file in lib.unstripped to reduce size.
   strip_debug_info = false

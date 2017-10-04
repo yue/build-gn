@@ -29,6 +29,7 @@ execSync('git submodule update --init --recursive')
 
 const commonConfig = [
   'use_allocator_shim=false',
+  'use_cxx11=false',
   `target_cpu="${targetCpu}"`,
 ]
 const debugConfig = [
