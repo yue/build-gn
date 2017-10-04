@@ -16,11 +16,10 @@ const zipname = `gn_${version}_${targetOs}_${targetCpu}`
 const tmppath = path.join(os.tmpdir(), zipname)
 
 // Bulid and package.
-process.stdout.write('Zipping and unzipping GN...')
-execSync('scripts/build.js out/Release', {stdio: null})
-execSync('scripts/create_dist.js', {stdio: null})
+console.log('Zipping and unzipping GN...')
+execSync('node scripts/build.js out/Release')
+execSync('node scripts/create_dist.js')
 extract(`out/Release/${zipname}.zip`, {dir: path.join(tmppath, 'gn')}, runTests)
-process.stdout.write('ok\n')
 
 function runTests(error) {
   if (error) {
@@ -33,17 +32,14 @@ function runTests(error) {
 }
 
 function runEachTest(project, projectPath) {
-  process.stdout.write(`Generating ninja bulid for project "${project}"...`)
+  console.log(`Generating ninja bulid for project "${project}"...`)
   const outdir = path.join(tmppath, project, 'out')
   const gn = path.join(tmppath, 'gn', 'gn')
-  execSync(`${gn} gen ${outdir}`, {cwd: projectPath, stdio: null})
-  process.stdout.write('ok\n')
+  execSync(`${gn} gen ${outdir}`, {cwd: projectPath})
 
-  process.stdout.write(`Building project "${project}"...`)
-  execSync(`ninja -C ${outdir}`, {stdio: null})
-  process.stdout.write('ok\n')
+  console.log(`Building project "${project}"...`)
+  execSync(`ninja -C ${outdir}`)
 
-  process.stdout.write(`Running project "${project}"...`)
-  execSync(`${path.join(outdir, 'test')}`, {stdio: null})
-  process.stdout.write('ok\n')
+  console.log(`Running project "${project}"...`)
+  execSync(`${path.join(outdir, 'test')}`)
 }
