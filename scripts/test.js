@@ -26,6 +26,9 @@ function runTests(error) {
     console.error(error)
     process.exit(1)
   }
+  if (targetCpu !== 'x64' && targetOs !== 'win') {
+    return
+  }
   for (const project of fs.readdirSync('examples')) {
     runEachTest(project, path.resolve('examples', project))
   }
