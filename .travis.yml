@@ -18,8 +18,8 @@ addons:
       - ubuntu-toolchain-r-test
       - sourceline: 'ppa:webkit-team/ppa'
     packages:
-      - gcc-4.8-multilib
-      - g++-4.8-multilib
+      - gcc-5-multilib
+      - g++-5-multilib
       - linux-libc-dev:i386
 
 env:
