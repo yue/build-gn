@@ -9,7 +9,6 @@ platform: x64
 environment:
   matrix:
     - TARGET_CPU: x64
-    - TARGET_CPU: x86
 
 install:
   - ps: Install-Product node 8

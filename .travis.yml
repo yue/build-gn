@@ -25,12 +25,6 @@ addons:
 env:
   - TARGET_CPU=x64
 
-matrix:
-  include:
-    - os: linux
-      env:
-        - TARGET_CPU=x86
-
 before_script:
   - export GN_VERSION=$(git describe --always --tags)
   - export CC=gcc-5
