@@ -15,7 +15,7 @@ let sysrootArch = {
 }[targetCpu]
 
 execSync('node scripts/update_gn.js')
-if (process.platform !== 'win32') {
+if (process.platform === 'linux') {
   execSync('python tools/clang/scripts/update.py')
 }
 if (process.platform === 'linux') {
@@ -29,7 +29,6 @@ execSync('git submodule update --init --recursive')
 
 const commonConfig = [
   'use_allocator_shim=false',
-  'use_cxx11=false',
   `target_cpu="${targetCpu}"`,
 ]
 const debugConfig = [
@@ -43,7 +42,6 @@ const releaseConfig = [
   'is_debug=false',
   'use_sysroot=true',
   'is_official_build=true',
-  'allow_posix_link_time_opt=false',
 ]
 
 if (targetOs == 'linux') {
@@ -57,10 +55,6 @@ if (targetOs == 'linux') {
   if (targetCpu == 'arm') {
     releaseConfig.push('fatal_linker_warnings=false')
   }
-}
-if (targetOs == 'mac') {
-  // Use prebuilt clang binaries.
-  commonConfig.push('use_xcode_clang=false')
 }
 
 gen('out/Debug', debugConfig)

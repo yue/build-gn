@@ -43,5 +43,4 @@ node scripts/build.js
 * Default args changed to `is_clang=false use_sysroot=false` on Linux.
 * Default args changed to `use_xcode_clang=true` on macOS.
 * The `DEPOT_TOOLS_WIN_TOOLCHAIN` is set to `0` by default on Windows.
-* Use C++11 standard by default.
 * Certain very Chromium-specific configurations have been removed.
