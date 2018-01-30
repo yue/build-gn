@@ -11,6 +11,7 @@ os:
   - linux
 osx_image: xcode8.3
 dist: trusty
+sudo: required
 
 addons:
   apt:
@@ -27,8 +28,10 @@ env:
 
 before_script:
   - export GN_VERSION=$(git describe --always --tags)
-  - export CC=gcc-5
-  - export CXX=g++-5
+  - if [ "$TRAVIS_OS_NAME" == "linux" ]; then
+      sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-5 1000;
+      sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-5 1000;
+    fi
 
 script:
   - node scripts/bootstrap.js --target-cpu=$TARGET_CPU
