@@ -33,6 +33,8 @@ matrix:
 
 before_script:
   - export GN_VERSION=$(git describe --always --tags)
+  - export CC=gcc-5
+  - export CXX=g++-5
 
 script:
   - node scripts/bootstrap.js --target-cpu=$TARGET_CPU
