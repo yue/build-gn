@@ -12,10 +12,8 @@ const JSZip = require('./libs/jszip')
 
 // Blacklist folders.
 const folderBlacklist = [
-  'build/linux/debian_jessie_amd64-sysroot',
-  'build/linux/debian_jessie_i386-sysroot',
-  'build/linux/debian_jessie_arm-sysroot',
-  'build/linux/debian_jessie_arm64-sysroot',
+  'build/linux/debian_stretch_amd64-sysroot',
+  'build/linux/debian_stretch_i386-sysroot',
 ]
 
 // Blacklist for file extensions.
@@ -114,7 +112,5 @@ function searchFiles(dir, list = []) {
 
 function strip(file) {
   // TODO(zcbenz): Copy the debug symbols out before striping.
-  const strip = targetCpu.startsWith('arm') ? 'arm-linux-gnueabihf-strip'
-                                            : 'strip'
-  execSync(`${strip} ${file}`)
+  execSync(`strip ${file}`)
 }

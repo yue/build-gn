@@ -10,8 +10,6 @@ const {targetCpu, targetOs, execSync, spawnSync} = require('./common')
 let sysrootArch = {
   x64: 'amd64',
   x86: 'i386',
-  arm: 'arm',
-  arm64: 'arm64',
 }[targetCpu]
 
 execSync('node scripts/update_gn.js')
@@ -52,9 +50,6 @@ if (targetOs == 'linux') {
   // Link with libc++ statically.
   commonConfig.push('use_custom_libcxx=true')
   releaseConfig.push('libcpp_is_static=true')
-  if (targetCpu == 'arm') {
-    releaseConfig.push('fatal_linker_warnings=false')
-  }
 }
 
 gen('out/Debug', debugConfig)

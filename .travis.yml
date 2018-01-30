@@ -20,12 +20,7 @@ addons:
     packages:
       - gcc-4.8-multilib
       - g++-4.8-multilib
-      - gcc-arm-linux-gnueabihf
-      - g++-arm-linux-gnueabihf
       - linux-libc-dev:i386
-      - libc6-dev-armhf-cross
-      - linux-libc-dev-armhf-cross
-      - binutils-aarch64-linux-gnu
 
 env:
   - TARGET_CPU=x64
@@ -35,9 +30,6 @@ matrix:
     - os: linux
       env:
         - TARGET_CPU=x86
-    - os: linux
-      env:
-        - TARGET_CPU=arm
 
 before_script:
   - export GN_VERSION=$(git describe --always --tags)
