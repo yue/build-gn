@@ -25,10 +25,11 @@ pkg_config("gtk3_internal_config") {
 # Basically no parts of Chrome should depend on GTK. To prevent accidents, the
 # parts that explicitly need GTK3 are whitelisted on this target.
 group("gtk3") {
-  visibility = [
-    "//build/config/linux/gtk",
-    "//chrome/browser/ui/libgtkui:*",
-  ]
+  # PATCH(build-gn): Allow free access to gtk3.
+  # visibility = [
+  #   "//build/config/linux/gtk",
+  #   "//chrome/browser/ui/libgtkui:*",
+  # ]
   public_configs = [ ":gtk3_internal_config" ]
 }
 
