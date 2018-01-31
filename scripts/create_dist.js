@@ -39,6 +39,7 @@ const files =
   searchFiles('buildtools/third_party/libc++abi/trunk/include')).concat(
   searchFiles('buildtools/third_party/libunwind/trunk/src')).concat(
   searchFiles('buildtools/third_party/libunwind/trunk/include')).concat(
+  searchFiles('testing')).concat(
   searchFiles('tools/gyp/pylib')).concat(
   searchFiles('tools/cfi'))
 addFileToZip(gnzip, 'buildtools/third_party/libc++/BUILD.gn', '.')
