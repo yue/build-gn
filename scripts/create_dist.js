@@ -42,6 +42,7 @@ const files =
   searchFiles('testing')).concat(
   searchFiles('tools/gyp/pylib')).concat(
   searchFiles('tools/cfi')).concat(
+  searchFiles('tools/win')).concat(
   searchFiles('third_party/googletest'))
 addFileToZip(gnzip, 'buildtools/third_party/libc++/BUILD.gn', '.')
 addFileToZip(gnzip, 'buildtools/third_party/libc++abi/BUILD.gn', '.')
