@@ -87,9 +87,10 @@ if (use_glib) {
       "gobject-2.0",
       "gthread-2.0",
     ]
-    defines = [
-      "GLIB_VERSION_MAX_ALLOWED=GLIB_VERSION_2_32",
-      "GLIB_VERSION_MIN_REQUIRED=GLIB_VERSION_2_26",
-    ]
+    # PATCH(build-gn): Hell no.
+    # defines = [
+    #   "GLIB_VERSION_MAX_ALLOWED=GLIB_VERSION_2_32",
+    #   "GLIB_VERSION_MIN_REQUIRED=GLIB_VERSION_2_26",
+    # ]
   }
 }
