@@ -56,7 +56,9 @@ declare_args() {
 # build flags.
 config("feature_flags") {
   # Don't use deprecated V8 APIs anywhere.
-  defines = [ "V8_DEPRECATION_WARNINGS" ]
+  # PATCH(bulid-gn): Do not add this define.
+  # defines = [ "V8_DEPRECATION_WARNINGS" ]
+  defines = []
   if (dcheck_always_on) {
     defines += [ "DCHECK_ALWAYS_ON=1" ]
   }
