@@ -1359,6 +1359,7 @@ config("default_warnings") {
         # -Wtautological-unsigned-enum-zero-compare), but re-enable
         # useful sub-diagnostics in that group.
         # PATCH(build-gn): Not supported on XCode 8.3.
+        "-Wno-tautological-constant-compare",
         "-Wno-tautological-unsigned-enum-zero-compare",
       ]
     } else if (use_xcode_clang) {
