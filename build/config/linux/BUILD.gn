@@ -30,16 +30,17 @@ config("runtime_library") {
 config("x11") {
   libs = [
     "X11",
-    "X11-xcb",
-    "xcb",
-    "Xcomposite",
-    "Xcursor",
-    "Xdamage",
-    "Xext",
-    "Xfixes",
-    "Xi",
-    "Xrender",
-    "Xtst",
+    # PATCH(build-gn): Do not require unnecessary libs.
+    # "X11-xcb",
+    # "xcb",
+    # "Xcomposite",
+    # "Xcursor",
+    # "Xdamage",
+    # "Xext",
+    # "Xfixes",
+    # "Xi",
+    # "Xrender",
+    # "Xtst",
   ]
 }
 
