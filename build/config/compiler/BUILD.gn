@@ -1250,7 +1250,8 @@ config("default_warnings") {
     if ((is_mac || is_ios) && !is_nacl) {
       # When compiling Objective-C, warns if a method is used whose
       # availability is newer than the deployment target.
-      cflags += [ "-Wunguarded-availability" ]
+      # PATCH(build-gn): This is not available on old clang.
+      # cflags += [ "-Wunguarded-availability" ]
     }
 
     if (is_ios) {
