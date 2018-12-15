@@ -1370,6 +1370,8 @@ config("default_warnings") {
 
         # TODO(hans): https://crbug.com/637306
         "-Wno-address-of-packed-member",
+
+        "-Wno-unused-lambda-capture",
       ]
     }
   }
