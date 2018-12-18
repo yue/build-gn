@@ -334,7 +334,8 @@ def _CopyDebugger(target_dir, target_cpu):
 
   # List of debug files that should be copied, the first element of the tuple is
   # the name of the file and the second indicates if it's optional.
-  debug_files = [('dbghelp.dll', False), ('dbgcore.dll', True)]
+  # PATCH(build-gn): We don't want dbghelp.
+  debug_files = [('dbghelp.dll', True), ('dbgcore.dll', True)]
   for debug_file, is_optional in debug_files:
     full_path = os.path.join(win_sdk_dir, 'Debuggers', target_cpu, debug_file)
     if not os.path.exists(full_path):
