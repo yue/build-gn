@@ -116,6 +116,9 @@ declare_args() {
   # (despite passing -O2 or -O3), which reduces binary size by quite a bit,
   # potentially at the cost of some performance.
   clang_sample_profile_is_accurate = true
+
+  # PATCH(build-gn): Allow changing position of the update script.
+  clang_update_script = "//tools/clang/scripts/update.py"
 }
 
 declare_args() {
@@ -149,8 +152,9 @@ if (is_clang && !use_xcode_clang) {
   if (llvm_force_head_revision) {
     update_args += [ "--llvm-force-head-revision" ]
   }
+  # PATCH(build-gn): Allow changing position of the update script.
   clang_revision =
-      exec_script("//tools/clang/scripts/update.py", update_args, "trim string")
+      exec_script(clang_update_script, update_args, "trim string")
 }
 
 # Apply the default logic for these values if they were not set explicitly.
