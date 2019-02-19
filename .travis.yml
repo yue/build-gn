@@ -49,7 +49,7 @@ deploy:
   overwrite: true
   draft: true
   tag_name: ${GN_VERSION}
-  name: Yue ${GN_VERSION}
+  name: GN ${GN_VERSION}
   body: (placeholder)
   on:
     tags: true
