@@ -65,7 +65,9 @@ config("feature_flags") {
   if (use_glib) {
     defines += [ "USE_GLIB=1" ]
   }
-  if (use_allocator != "tcmalloc") {
+  if (use_allocator == "tcmalloc") {
+    defines += [ "USE_TCMALLOC" ]
+  } else {
     defines += [ "NO_TCMALLOC" ]
   }
   if (is_asan || is_lsan || is_tsan || is_msan) {
