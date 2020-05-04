@@ -47,6 +47,7 @@ if (targetOs == 'linux') {
   debugConfig.push('enable_iterator_debugging=false')
   // Use prebuilt clang binaries.
   commonConfig.push('is_clang=true')
+  commonConfig.push('use_allocator="tcmalloc"')
   // Link with libc++ statically.
   commonConfig.push('use_custom_libcxx=true')
   releaseConfig.push('libcpp_is_static=true')

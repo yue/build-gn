@@ -26,10 +26,12 @@ if ((is_linux || is_android || is_mac ||
 
 declare_args() {
   # Memory allocator to use. Set to "none" to use default allocator.
-  use_allocator = _default_allocator
+  # Yue: Turn off allocator by default.
+  use_allocator = "none"
 
   # Causes all the allocations to be routed via allocator_shim.cc.
-  use_allocator_shim = _default_use_allocator_shim
+  # Yue: Turn off allocator by default.
+  use_allocator_shim = false
 
   # Partition alloc is included by default except iOS.
   use_partition_alloc = !is_ios
