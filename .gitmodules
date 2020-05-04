@@ -15,7 +15,7 @@
 	url = https://chromium.googlesource.com/chromium/src/third_party/tcmalloc/chromium
 [submodule "base"]
 	path = base
-	url = https://chromium.googlesource.com/chromium/src/base
+	url = https://github.com/yue/base
 [submodule "third_party/ced/src"]
 	path = third_party/ced/src
 	url = https://github.com/google/compact_enc_det.git

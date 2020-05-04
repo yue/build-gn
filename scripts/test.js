@@ -36,7 +36,7 @@ function runTests(error) {
 
 function runEachTest(project, projectPath) {
   console.log(`Generating ninja bulid for project "${project}"...`)
-  const outdir = path.join(tmppath, project, 'out')
+  const outdir = path.resolve('out', 'Test')
   const gn = path.join(tmppath, 'gn', 'gn')
   execSync(`${gn} gen ${outdir}`, {cwd: projectPath})
 
