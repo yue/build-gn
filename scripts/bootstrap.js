@@ -26,6 +26,7 @@ execSync('git submodule sync --recursive')
 execSync('git submodule update --init --recursive')
 
 const commonConfig = [
+  'use_jumbo_build=true',
   'use_allocator_shim=false',
   `target_cpu="${targetCpu}"`,
 ]
