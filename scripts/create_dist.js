@@ -12,8 +12,7 @@ const JSZip = require('./libs/jszip')
 
 // Blacklist folders.
 const folderBlacklist = [
-  'build/linux/debian_stretch_amd64-sysroot',
-  'build/linux/debian_stretch_i386-sysroot',
+  /debian_.*-sysroot/,
 ]
 
 // Blacklist for file extensions.
@@ -102,7 +101,7 @@ function searchFiles(dir, list = []) {
         extensionBlacklist.includes(path.basename(p)))
       return list
     for (const f of folderBlacklist) {
-      if (p.startsWith(f))
+      if (f.test(p))
         return list
     }
     if (stat.isFile())

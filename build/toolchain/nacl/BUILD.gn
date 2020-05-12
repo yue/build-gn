@@ -2,8 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//build/config/sysroot.gni")
 import("//build/config/nacl/config.gni")
+import("//build/config/sysroot.gni")
 import("//build/toolchain/nacl_toolchain.gni")
 
 # Add the toolchain revision as a preprocessor define so that sources are
@@ -68,7 +68,7 @@ template("pnacl_toolchain") {
 
     cc = compiler_scriptprefix + toolprefix + "clang" + scriptsuffix
     cxx = compiler_scriptprefix + toolprefix + "clang++" + scriptsuffix
-    ar = scriptprefix + toolprefix + "ar" + scriptsuffix
+    ar = toolprefix + "ar" + scriptsuffix
     readelf = scriptprefix + toolprefix + "readelf" + scriptsuffix
     nm = scriptprefix + toolprefix + "nm" + scriptsuffix
     if (defined(invoker.strip)) {
@@ -87,6 +87,7 @@ template("pnacl_toolchain") {
     toolchain_args = {
       is_clang = true
       current_cpu = "pnacl"
+      use_lld = false
     }
   }
 }
@@ -107,10 +108,6 @@ pnacl_toolchain("newlib_pnacl") {
 pnacl_toolchain("newlib_pnacl_nonsfi") {
   executable_extension = ""
   strip = "strip"
-
-  if (use_clang_static_analyzer) {
-    is_clang_analysis_supported = false
-  }
 }
 
 template("nacl_glibc_toolchain") {
@@ -141,6 +138,7 @@ template("nacl_glibc_toolchain") {
       current_cpu = toolchain_cpu
       is_clang = false
       is_nacl_glibc = true
+      use_lld = false
     }
   }
 }
@@ -191,6 +189,7 @@ template("nacl_clang_toolchain") {
     toolchain_args = {
       current_cpu = toolchain_cpu
       is_clang = true
+      use_lld = false
     }
   }
 }
@@ -229,12 +228,11 @@ template("nacl_irt_toolchain") {
     toolchain_args = {
       current_cpu = toolchain_cpu
       is_clang = true
+      use_lld = false
     }
 
     # TODO(ncbray): depend on link script
-    deps = [
-      tls_edit_label,
-    ]
+    deps = [ tls_edit_label ]
   }
 }
 

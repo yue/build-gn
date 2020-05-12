@@ -54,6 +54,21 @@ const argv = process.argv.slice(2).filter((arg) => {
   }
 })
 
+// Turn stream into Promise.
+const streamPromise = (stream) => {
+  return new Promise((resolve, reject) => {
+    stream.on('end', () => {
+      resolve('end')
+    })
+    stream.on('finish', () => {
+      resolve('finish')
+    })
+    stream.on('error', (error) => {
+      reject(error)
+    })
+  })
+}
+
 // Helper around execSync.
 const execSyncWrapper = (command, options = {}) => {
   // Print command output by default.
@@ -90,6 +105,7 @@ module.exports = {
   argv,
   targetCpu,
   targetOs,
+  streamPromise,
   execSync: execSyncWrapper,
   spawnSync: spawnSyncWrapper,
 }

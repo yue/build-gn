@@ -4,11 +4,18 @@
 
 import("//build/config/chrome_build.gni")
 import("//build/config/chromecast_build.gni")
+import("//build/config/chromeos/args.gni")
+import("//build/config/profiling/profiling.gni")
 import("//build/toolchain/toolchain.gni")
 
 declare_args() {
   # Compile for Address Sanitizer to find memory bugs.
   is_asan = false
+
+  # Compile for Hardware-Assisted Address Sanitizer to find memory bugs
+  # (android/arm64 only).
+  # See http://clang.llvm.org/docs/HardwareAssistedAddressSanitizerDesign.html
+  is_hwasan = false
 
   # Compile for Leak Sanitizer to find leaks.
   is_lsan = false
@@ -38,35 +45,25 @@ declare_args() {
   msan_track_origins = 2
 
   # Use dynamic libraries instrumented by one of the sanitizers instead of the
-  # standard system libraries. Set this flag to download prebuilt binaries from
-  # GCS.
-  use_prebuilt_instrumented_libraries = false
-
-  # Use dynamic libraries instrumented by one of the sanitizers instead of the
   # standard system libraries. Set this flag to build the libraries from source.
   use_locally_built_instrumented_libraries = false
-
-  # Enable building with SyzyAsan which can find certain types of memory
-  # errors. Only works on Windows. See
-  # https://github.com/google/syzygy/wiki/SyzyASanHowTo
-  is_syzyasan = false
 
   # Compile with Control Flow Integrity to protect virtual calls and casts.
   # See http://clang.llvm.org/docs/ControlFlowIntegrity.html
   #
   # TODO(pcc): Remove this flag if/when CFI is enabled in all official builds.
-  # PATCH(build-gn): This is incompatible with system toolchains.
-  is_cfi = false
-
-  # Enable checks for bad casts: derived cast and unrelated cast.
-  # TODO(krasin): remove this, when we're ready to add these checks by default.
-  # https://crbug.com/626794
-  use_cfi_cast = false
+  #
+  # Disable this on linux-chromeos to avoid using ThinLTO there;
+  # crbug.com/1033839. Similarly, don't use this on ARC builds.
+  is_cfi = is_official_build &&
+           ((target_os == "linux" && !is_chromeos && target_cpu == "x64") ||
+            (target_os == "chromeos" && is_chromeos_device))
 
   # Enable checks for indirect function calls via a function pointer.
   # TODO(pcc): remove this when we're ready to add these checks by default.
   # https://crbug.com/701919
-  use_cfi_icall = false
+  use_cfi_icall = target_os == "linux" && !is_chromeos && target_cpu == "x64" &&
+                  is_official_build
 
   # Print detailed diagnostics when Control Flow Integrity detects a violation.
   use_cfi_diag = false
@@ -82,40 +79,57 @@ declare_args() {
   # Compile for fuzzing with AFL.
   use_afl = false
 
+  # Compile for fuzzing with an external engine (e.g., Grammarinator).
+  use_external_fuzzing_engine = false
+
   # Enables core ubsan security features. Will later be removed once it matches
   # is_ubsan.
   is_ubsan_security = false
-
-  # Compile for fuzzing with Dr. Fuzz
-  # See http://www.chromium.org/developers/testing/dr-fuzz
-  use_drfuzz = false
 
   # Helper variable for testing builds with disabled libfuzzer.
   # Not for client use.
   disable_libfuzzer = false
 
+  # Optimize for coverage guided fuzzing (balance between speed and number of
+  # branches). Can be also used to remove non-determinism and other issues.
+  optimize_for_fuzzing = false
+
   # Value for -fsanitize-coverage flag. Setting this causes
   # use_sanitizer_coverage to be enabled.
+  # This flag is not used for libFuzzer (use_libfuzzer=true). Instead, we use:
+  #     -fsanitize=fuzzer-no-link
   # Default value when unset and use_fuzzing_engine=true:
   #     trace-pc-guard
   # Default value when unset and use_sanitizer_coverage=true:
   #     trace-pc-guard,indirect-calls
   sanitizer_coverage_flags = ""
 
-  # Keep symbol level when building with sanitizers. When sanitizers are
-  # enabled, the default is to compile with the minimum debug info level
-  # necessary, overriding any other symbol level arguments that may be set.
-  # Setting this to true prevents this.
-  sanitizer_keep_symbols = false
+  # Use blacklists from tools/memory/asan when compiling with asan.
+  asan_use_blacklist = true
+
+  # When enabled, only relevant sanitizer defines are set, but compilation
+  # happens with no extra flags. This is useful when in component build
+  # enabling sanitizers only in some of the components.
+  use_sanitizer_configs_without_instrumentation = false
+
+  # When true, seed corpora archives are built.
+  archive_seed_corpus = true
 }
 
-# Disable sanitizers for non-default toolchains.
-if (current_toolchain != default_toolchain) {
+declare_args() {
+  # Enable checks for bad casts: derived cast and unrelated cast.
+  # TODO(krasin): remove this, when we're ready to add these checks by default.
+  # https://crbug.com/626794
+  use_cfi_cast = is_cfi && target_os == "chromeos"
+}
+
+# Disable sanitizers for non-target toolchains.
+if (!is_a_target_toolchain) {
   is_asan = false
   is_cfi = false
+  is_hwasan = false
   is_lsan = false
   is_msan = false
-  is_syzyasan = false
   is_tsan = false
   is_ubsan = false
   is_ubsan_null = false
@@ -127,23 +141,37 @@ if (current_toolchain != default_toolchain) {
   use_afl = false
   use_cfi_diag = false
   use_cfi_recover = false
-  use_drfuzz = false
   use_libfuzzer = false
-  use_prebuilt_instrumented_libraries = false
   use_locally_built_instrumented_libraries = false
   use_sanitizer_coverage = false
 }
 
+# Use dynamic libraries instrumented by one of the sanitizers instead of the
+# standard system libraries. We have instrumented system libraries for msan,
+# which requires them to prevent false positives.
+# TODO(thakis): Maybe remove this variable.
+use_prebuilt_instrumented_libraries = is_msan
+
 # Whether we are doing a fuzzer build. Normally this should be checked instead
 # of checking "use_libfuzzer || use_afl" because often developers forget to
 # check for "use_afl".
-use_fuzzing_engine = use_libfuzzer || use_afl
+use_fuzzing_engine = use_libfuzzer || use_afl || use_external_fuzzing_engine
 
 # Args that are in turn dependent on other args must be in a separate
 # declare_args block. User overrides are only applied at the end of a
 # declare_args block.
 declare_args() {
-  use_sanitizer_coverage = use_fuzzing_engine || sanitizer_coverage_flags != ""
+  use_sanitizer_coverage =
+      !use_clang_coverage &&
+      (use_fuzzing_engine || sanitizer_coverage_flags != "")
+
+  # https://crbug.com/1002058: Code coverage works inside the sandbox via the
+  # help of several helper IPCs. Unfortunately, the sandbox-only path does not
+  # work well for fuzzing builds. Since fuzzing builds already disable the
+  # sandbox when dumping coverage, limit the sandbox-only path to non-fuzzing
+  # builds.
+  use_clang_profiling_inside_sandbox =
+      use_clang_profiling && !use_fuzzing_engine
 
   # Detect overflow/underflow for global objects.
   #
@@ -160,9 +188,9 @@ if (use_fuzzing_engine && sanitizer_coverage_flags == "") {
 # Whether we are linking against a sanitizer runtime library. Among other
 # things, this changes the default symbol level and other settings in order to
 # prepare to create stack traces "live" using the sanitizer runtime.
-using_sanitizer =
-    is_asan || is_lsan || is_tsan || is_msan || is_ubsan || is_ubsan_null ||
-    is_ubsan_vptr || is_ubsan_security || use_sanitizer_coverage || use_cfi_diag
+using_sanitizer = is_asan || is_hwasan || is_lsan || is_tsan || is_msan ||
+                  is_ubsan || is_ubsan_null || is_ubsan_vptr ||
+                  is_ubsan_security || use_sanitizer_coverage || use_cfi_diag
 
 assert(!using_sanitizer || is_clang,
        "Sanitizers (is_*san) require setting is_clang = true in 'gn args'")
@@ -178,9 +206,6 @@ if (use_libfuzzer && is_linux) {
     # We do leak checking with libFuzzer on Linux. Set is_lsan for code that
     # relies on LEAK_SANITIZER define to avoid false positives.
     is_lsan = true
-  }
-  if (is_msan) {
-    use_prebuilt_instrumented_libraries = true
   }
 }
 
@@ -200,13 +225,23 @@ if (use_libfuzzer && is_linux) {
 assert(!is_debug || !(is_msan || is_ubsan || is_ubsan_null || is_ubsan_vptr),
        "Sanitizers should generally be used in release (set is_debug=false).")
 
+assert(!is_hwasan || (is_android && current_cpu == "arm64"),
+       "HWASan only supported on Android ARM64 builds.")
+
 assert(!is_msan || (is_linux && current_cpu == "x64"),
        "MSan currently only works on 64-bit Linux and ChromeOS builds.")
+
+assert(!is_lsan || is_asan, "is_lsan = true requires is_asan = true also.")
 
 # ASAN build on Windows is not working in debug mode. Intercepting memory
 # allocation functions is hard on Windows and not yet implemented in LLVM.
 assert(!is_win || !is_debug || !is_asan,
        "ASan on Windows doesn't work in debug (set is_debug=false).")
+
+# libFuzzer targets can fail to build or behave incorrectly when built without
+# ASAN on Windows.
+assert(!is_win || !use_libfuzzer || is_asan,
+       "use_libfuzzer on Windows requires setting is_asan = true")
 
 # Make sure that if we recover on detection (i.e. not crash), diagnostics are
 # printed.

@@ -5,8 +5,8 @@
 # Toolchain-related configuration that may be needed outside the context of the
 # toolchain() rules themselves.
 
-import("//build_overrides/build.gni")
 import("//build/config/chrome_build.gni")
+import("//build_overrides/build.gni")
 
 declare_args() {
   # If this is set to true, or if LLVM_FORCE_HEAD_REVISION is set to 1
@@ -18,43 +18,28 @@ declare_args() {
   llvm_force_head_revision = false
 
   # Compile with Xcode version of clang instead of hermetic version shipped
-  # with the build. Used on iOS to ship official builds (as they are built
-  # with the version of clang shipped with Xcode).
+  # with the build. Used to be used iOS for official builds, but is now off by
+  # default for all configurations.
   # PATCH(build-gn): Use xcode_clang by default.
   use_xcode_clang = is_ios || is_mac
 
   # Used for binary size analysis.
-  # Currently disabled on LLD because of a bug (fixed upstream).
-  # See https://crbug.com/716209.
   generate_linker_map = is_android && is_official_build
-
-  # Use absolute file paths in the compiler diagnostics and __FILE__ macro
-  # if needed.
-  msvc_use_absolute_paths = false
 }
 
 if (generate_linker_map) {
   assert(
       is_official_build,
       "Linker map files should only be generated when is_official_build = true")
-  assert(target_os == "android" || target_os == "linux",
+  assert(current_os == "android" || current_os == "linux" ||
+             target_os == "android" || target_os == "linux",
          "Linker map files should only be generated for Android and Linux")
 }
-
-# The path to the hermetic install of Xcode. Only relevant when
-# use_system_xcode = false.
-hermetic_xcode_path =
-    rebase_path("//build/${target_os}_files/Xcode.app", "", root_build_dir)
 
 declare_args() {
   if (is_clang) {
     # Clang compiler version. Clang files are placed at version-dependent paths.
-    if (llvm_force_head_revision) {
-      clang_version = "7.0.0"
-    } else {
-      # TODO(hans): Trunk was updated; remove after the next roll.
-      clang_version = "6.0.0"
-    }
+    clang_version = "11.0.0"
   }
 }
 
@@ -62,20 +47,8 @@ declare_args() {
 # toolchain (host toolchain in particular) but the argument is the same for
 # all toolchains.
 # PATCH(build-gn): Use xcode_clang by default.
-assert(!use_xcode_clang || target_os == "ios" || target_os =="mac",
-       "Using Xcode's clang is only supported in iOS builds")
-
-# Subdirectory within root_out_dir for shared library files.
-# TODO(agrieve): GYP sets this to "lib" for Linux & Android, but this won't work
-#     in GN until support for loadable_module() is added.
-#     See: https://codereview.chromium.org/1236503002/
-shlib_subdir = "."
-
-# Root out dir for shared library files.
-root_shlib_dir = root_out_dir
-if (shlib_subdir != ".") {
-  root_shlib_dir += "/$shlib_subdir"
-}
+# assert(!use_xcode_clang || target_os == "ios",
+#        "Using Xcode's clang is only supported in iOS builds")
 
 # Extension for shared library files (including leading dot).
 if (is_mac || is_ios) {
@@ -84,7 +57,7 @@ if (is_mac || is_ios) {
   # By appending .cr, we prevent name collisions with libraries already
   # loaded by the Android zygote.
   shlib_extension = ".cr.so"
-} else if (is_posix) {
+} else if (is_posix || is_fuchsia) {
   shlib_extension = ".so"
 } else if (is_win) {
   shlib_extension = ".dll"
@@ -93,10 +66,17 @@ if (is_mac || is_ios) {
 }
 
 # Prefix for shared library files.
-if (is_posix) {
+if (is_posix || is_fuchsia) {
   shlib_prefix = "lib"
 } else {
   shlib_prefix = ""
+}
+
+# Directory for shared library files.
+if (is_fuchsia) {
+  shlib_subdir = "/lib"
+} else {
+  shlib_subdir = ""
 }
 
 # While other "tool"s in a toolchain are specific to the target of that
@@ -111,10 +91,20 @@ if (host_os == "win") {
   _tool_wrapper_path =
       rebase_path("//build/toolchain/win/tool_wrapper.py", root_build_dir)
 
-  stamp_command = "$python_path $_tool_wrapper_path stamp {{output}}"
+  stamp_command = "cmd /c type nul > \"{{output}}\""
   copy_command =
       "$python_path $_tool_wrapper_path recursive-mirror {{source}} {{output}}"
 } else {
   stamp_command = "touch {{output}}"
   copy_command = "ln -f {{source}} {{output}} 2>/dev/null || (rm -rf {{output}} && cp -af {{source}} {{output}})"
 }
+
+# This variable is true if the current toolchain is one of the target
+# toolchains, i.e. a toolchain which is being used to build the main Chrome
+# binary. This generally means "not the host toolchain", but in the case where
+# we're targeting the host it's true then as well. We do require current_os to
+# match target_os so that for example we avoid considering Android as a target
+# toolchain when targeting CrOS.
+is_a_target_toolchain =
+    (current_toolchain != host_toolchain ||
+     default_toolchain == host_toolchain) && current_os == target_os

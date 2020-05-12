@@ -6,10 +6,17 @@ import("//build/config/coverage/coverage.gni")
 
 config("default_coverage") {
   if (use_clang_coverage) {
+    ldflags = []
+    if (!is_win) {
+      # Windows directly calls link.exe instead of the compiler driver when
+      # linking, and embeds the path to the profile runtime library as
+      # dependent library into each object file.
+      ldflags += [ "-fprofile-instr-generate" ]
+    }
+
     cflags = [
       "-fprofile-instr-generate",
       "-fcoverage-mapping",
-      "-fno-use-cxa-atexit",
 
       # Following experimental flags removes unused header functions from the
       # coverage mapping data embedded in the test binaries, and the reduction
@@ -18,6 +25,9 @@ config("default_coverage") {
       "-mllvm",
       "-limited-coverage-experimental=true",
     ]
-    ldflags = [ "-fprofile-instr-generate" ]
+
+    if (!is_win) {
+      cflags += [ "-fno-use-cxa-atexit" ]
+    }
   }
 }

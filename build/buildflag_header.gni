@@ -3,7 +3,6 @@
 # found in the LICENSE file.
 
 # Generates a header with preprocessor defines specified by the build file.
-# The GYP version of this (with instructions) is build/buildflag_header.gypi.
 #
 # The flags are converted to function-style defines with mangled names and
 # code uses an accessor macro to access the values. This is to try to
@@ -32,8 +31,8 @@
 #
 #   const char kSpamServerUrl[] = BUILDFLAG(SPAM_SERVER_URL);
 #
-# There will no #define called ENABLE_FOO so if you accidentally test for that
-# in an ifdef it will always be negative.
+# There will be no #define called ENABLE_FOO so if you accidentally test for
+# that in an ifdef it will always be negative.
 #
 #
 # Template parameters
@@ -80,8 +79,8 @@
 #
 # Example
 #
-#   buildflag_header("foo_features") {
-#     header = "foo_features.h"
+#   buildflag_header("foo_buildflags") {
+#     header = "foo_buildflags.h"
 #
 #     flags = [
 #       # This uses the GN build flag enable_doom_melon as the definition.
@@ -105,9 +104,7 @@ template("buildflag_header") {
       header_file = rebase_path(".", "//") + "/${invoker.header}"
     }
 
-    outputs = [
-      "$root_gen_dir/$header_file",
-    ]
+    outputs = [ "$root_gen_dir/$header_file" ]
 
     # Always write --flags to the file so it's not empty. Empty will confuse GN
     # into thinking the response file isn't used.
@@ -134,5 +131,7 @@ template("buildflag_header") {
                              "testonly",
                              "visibility",
                            ])
+
+    public_deps = [ "//build:buildflag_header_h" ]
   }
 }

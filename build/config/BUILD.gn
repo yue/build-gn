@@ -2,35 +2,26 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//build/config/allocator.gni")
 import("//build/config/c++/c++.gni")
 import("//build/config/chrome_build.gni")
 import("//build/config/chromecast_build.gni")
+import("//build/config/crypto.gni")
 import("//build/config/dcheck_always_on.gni")
 import("//build/config/features.gni")
 
-# Subprojects need to override arguments in mac_sdk_overrides.gni in their .gn
-# config, but those arguments are only used on macOS. Including
+# Subprojects need to override arguments in {mac,ios}_sdk_overrides.gni in their
+# .gn config, but those arguments are only used on macOS. Including
 # mac_sdk_overrides.gni insures that this doesn't trigger an unused argument
 # warning.
+import("//build/config/ios/ios_sdk_overrides.gni")
 import("//build/config/mac/mac_sdk_overrides.gni")
 
 import("//build/config/pch.gni")
 import("//build/config/sanitizers/sanitizers.gni")
 import("//build/config/ui.gni")
 import("//build/toolchain/goma.gni")
-
-declare_args() {
-  # When set (the default) enables C++ iterator debugging in debug builds.
-  # Iterator debugging is always off in release builds (technically, this flag
-  # affects the "debug" config, which is always available but applied by
-  # default only in debug builds).
-  #
-  # Iterator debugging is generally useful for catching bugs. But it can
-  # introduce extra locking to check the state of an iterator against the state
-  # of the current object. For iterator- and thread-heavy code, this can
-  # significantly slow execution.
-  enable_iterator_debugging = true
+if (is_android) {
+  import("//build/config/android/abi.gni")
 }
 
 # ==============================================
@@ -48,33 +39,47 @@ declare_args() {
 # and means its definition can participate in the build graph, only recompiling
 # things when it actually changes.
 #
-# See //build/buildflag_header.gni for inntructions on generating headers.
+# See //build/buildflag_header.gni for instructions on generating headers.
 #
 # This will also allow you to scope your build flag to a BUILD.gn file (or a
 # .gni file if you need it from more than one place) rather than making global
 # flags. See //build/config/BUILDCONFIG.gn for advice on where to define
 # build flags.
 config("feature_flags") {
-  # Don't use deprecated V8 APIs anywhere.
-  # PATCH(bulid-gn): Do not add this define.
-  # defines = [ "V8_DEPRECATION_WARNINGS" ]
   defines = []
   if (dcheck_always_on) {
     defines += [ "DCHECK_ALWAYS_ON=1" ]
+    if (dcheck_is_configurable) {
+      defines += [ "DCHECK_IS_CONFIGURABLE" ]
+    }
+  }
+  if (use_udev) {
+    # TODO(brettw) should probably be "=1".
+    defines += [ "USE_UDEV" ]
+  }
+  if (use_aura) {
+    defines += [ "USE_AURA=1" ]
   }
   if (use_glib) {
     defines += [ "USE_GLIB=1" ]
   }
-  if (use_allocator == "tcmalloc") {
-    defines += [ "USE_TCMALLOC" ]
-  } else {
-    defines += [ "NO_TCMALLOC" ]
+  if (use_nss_certs) {
+    defines += [ "USE_NSS_CERTS=1" ]
   }
-  if (is_asan || is_lsan || is_tsan || is_msan) {
-    defines += [
-      "MEMORY_TOOL_REPLACES_ALLOCATOR",
-      "MEMORY_SANITIZER_INITIAL_SIZE",
-    ]
+  if (use_ozone && !is_android) {
+    # Note that some Chrome OS builds unconditionally set |use_ozone| to true,
+    # but they also build some targets with the Android toolchain. This ensures
+    # that Android targets still build with USE_OZONE=0 in such cases.
+    #
+    # TODO(crbug.com/837032): Maybe this can be cleaned up if we can avoid
+    # setting use_ozone globally.
+    defines += [ "USE_OZONE=1" ]
+  }
+  if (use_x11) {
+    defines += [ "USE_X11=1" ]
+  }
+  if (is_asan || is_hwasan || is_lsan || is_tsan || is_msan) {
+    defines += [ "MEMORY_TOOL_REPLACES_ALLOCATOR" ]
   }
   if (is_asan) {
     defines += [ "ADDRESS_SANITIZER" ]
@@ -97,11 +102,10 @@ config("feature_flags") {
   if (is_official_build) {
     defines += [ "OFFICIAL_BUILD" ]
   }
-  if (is_syzyasan) {
-    defines += [
-      "SYZYASAN",
-      "MEMORY_SANITIZER_INITIAL_SIZE",
-    ]
+
+  if (is_chrome_branded) {
+    # TODO(thakis): Remove this in favor of build/branding_buildflags.h.
+    defines += [ "GOOGLE_CHROME_BUILD" ]
   }
 
   # ==============================================
@@ -124,7 +128,7 @@ config("debug") {
   }
 
   if (is_win) {
-    if (!enable_iterator_debugging) {
+    if (!enable_iterator_debugging && !use_custom_libcxx) {
       # Iterator debugging is enabled by default by the compiler on debug
       # builds, and we have to tell it to turn it off.
       defines += [ "_HAS_ITERATOR_DEBUGGING=0" ]
@@ -142,9 +146,7 @@ config("release") {
 
   # Sanitizers.
   if (is_tsan) {
-    defines += [
-      "DYNAMIC_ANNOTATIONS_ENABLED=1",
-    ]
+    defines += [ "DYNAMIC_ANNOTATIONS_ENABLED=1" ]
   } else {
     defines += [ "NVALGRIND" ]
     if (!is_nacl) {
@@ -173,15 +175,21 @@ config("default_libs") {
       "advapi32.lib",
       "comdlg32.lib",
       "dbghelp.lib",
-      "delayimp.lib",
+      "dnsapi.lib",
       "gdi32.lib",
-      "ole32.lib",
+      "msimg32.lib",
+      "odbc32.lib",
+      "odbccp32.lib",
       "oleaut32.lib",
-      "psapi.lib",
       "shell32.lib",
       "shlwapi.lib",
       "user32.lib",
+      "usp10.lib",
+      "uuid.lib",
       "version.lib",
+      "wininet.lib",
+      "winmm.lib",
+      "winspool.lib",
       "ws2_32.lib",
 
       # Please don't add more stuff here. We should actually be making this
@@ -189,6 +197,20 @@ config("default_libs") {
       # some extra libraries, please just add a libs = [ "foo.lib" ] to your
       # target that needs it.
     ]
+    if (current_os == "winuwp") {
+      # These libraries are needed for Windows UWP (i.e. store apps).
+      libs += [
+        "dloadhelper.lib",
+        "WindowsApp.lib",
+      ]
+    } else {
+      # These libraries are not compatible with Windows UWP (i.e. store apps.)
+      libs += [
+        "delayimp.lib",
+        "kernel32.lib",
+        "ole32.lib",
+      ]
+    }
   } else if (is_android) {
     libs = [
       "dl",
@@ -216,18 +238,59 @@ config("default_libs") {
   }
 }
 
-# Dependencies that all executables and shared libraries should have.
-group("exe_and_shlib_deps") {
+group("common_deps") {
+  visibility = [
+    ":executable_deps",
+    ":loadable_module_deps",
+    ":shared_library_deps",
+  ]
+
+  # WARNING: This group is a dependency of **every executable and shared
+  # library**.  Please be careful adding new dependencies here.
   public_deps = []
+
   if (using_sanitizer) {
     public_deps += [ "//build/config/sanitizers:deps" ]
   }
+
   if (use_custom_libcxx) {
     public_deps += [ "//buildtools/third_party/libc++" ]
   }
+
   if (use_afl) {
     public_deps += [ "//third_party/afl" ]
   }
+
+  if (is_android && use_order_profiling) {
+    public_deps += [ "//base/android/orderfile:orderfile_instrumentation" ]
+  }
+
+  if (is_win && generate_order_files && !is_nacl) {
+    public_deps += [ "//tools/cygprofile_win" ]
+  }
+
+  if (is_fuchsia) {
+    public_deps +=
+        [ "//third_party/fuchsia-sdk/sdk/build/config:runtime_library_group" ]
+  }
+}
+
+# Only the executable template in BUILDCONFIG.gn should reference this.
+group("executable_deps") {
+  public_deps = [ ":common_deps" ]
+  if (export_libcxxabi_from_executables) {
+    public_deps += [ "//buildtools/third_party/libc++abi" ]
+  }
+}
+
+# Only the loadable_module template in BUILDCONFIG.gn should reference this.
+group("loadable_module_deps") {
+  public_deps = [ ":common_deps" ]
+}
+
+# Only the shared_library template in BUILDCONFIG.gn should reference this.
+group("shared_library_deps") {
+  public_deps = [ ":common_deps" ]
 }
 
 # Executable configs -----------------------------------------------------------
@@ -246,9 +309,6 @@ config("executable_config") {
 
   if (is_win) {
     configs += _windows_linker_configs
-
-    # Currently only turn on linker CFI for executables.
-    configs += [ "//build/config/win:cfi_linker" ]
   } else if (is_mac) {
     configs += [ "//build/config/mac:mac_dynamic_flags" ]
   } else if (is_ios) {
@@ -257,11 +317,11 @@ config("executable_config") {
       "//build/config/ios:ios_executable_flags",
     ]
   } else if (is_linux || is_android || current_os == "aix") {
-    configs += [ "//build/config/gcc:executable_ldconfig" ]
-    if (is_android) {
-      configs += [ "//build/config/android:executable_config" ]
-    } else if (is_chromecast) {
+    configs += [ "//build/config/gcc:executable_config" ]
+    if (is_chromecast) {
       configs += [ "//build/config/chromecast:executable_config" ]
+    } else if (is_fuchsia) {
+      configs += [ "//build/config/fuchsia:executable_config" ]
     }
   }
 
@@ -290,6 +350,8 @@ config("shared_library_config") {
     configs += [ "//build/config/ios:ios_dynamic_flags" ]
   } else if (is_chromecast) {
     configs += [ "//build/config/chromecast:shared_library_config" ]
+  } else if (is_linux || current_os == "aix") {
+    configs += [ "//build/config/gcc:shared_library_config" ]
   }
 
   # If we're using the prebuilt instrumented libraries with the sanitizers, we

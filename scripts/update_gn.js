@@ -4,15 +4,12 @@
 // Use of this source code is governed by the license that can be found in the
 // LICENSE file.
 
-const https = require('https')
-const fs    = require('fs')
-const path  = require('path')
+const {streamPromise} = require('./common')
 
-const sha1 = {
-  linux64: '4e5f9299c4ae4d80dcd87b4ade0bbada23ccf866',
-  mac: 'fbba40a0900ae685f5822d03d160a413d549e056',
-  win: 'c0d03f78af494365ff38c663297a20fe61da29ea',
-}
+const fs = require('fs')
+const path = require('path')
+const fetch = require('./libs/node-fetch')
+const extract = require('./libs/extract-zip')
 
 const platform = {
   linux: 'linux64',
@@ -21,16 +18,24 @@ const platform = {
 }[process.platform]
 
 const buildtools = path.resolve(__dirname, '..', 'buildtools')
-const filename = platform === 'win' ? 'gn.exe' : 'gn'
-const gnPath = path.join(buildtools, platform, filename)
+const targetDir = path.join(buildtools, platform)
+const gnPath = path.join(targetDir, platform == 'win' ? 'gn.exe' : 'gn')
 
 if (!fs.existsSync(gnPath)) {
-  downloadGn(sha1[platform], gnPath)
+  downloadGn(targetDir, gnPath)
 }
 
-function downloadGn(sha1, target) {
-  const url = `https://storage.googleapis.com/chromium-gn/${sha1}`
-  const file = fs.createWriteStream(target)
-  file.on('finish', () => fs.chmodSync(target, 0755))
-  https.get(url, (response) => response.pipe(file))
+async function downloadGn(targetDir, gnPath) {
+  const platform = {
+    linux: 'linux',
+    darwin: 'mac',
+    win32: 'windows',
+  }[process.platform]
+  const ret = await fetch(`https://chrome-infra-packages.appspot.com/dl/gn/gn/${platform}-amd64/+/latest`)
+  const zipPath = path.join(targetDir, 'gn.zip')
+  const file = fs.createWriteStream(zipPath)
+  await streamPromise(ret.body.pipe(file))
+  await extract(zipPath, {dir: targetDir})
+  fs.chmodSync(gnPath, 0755)
+  fs.unlinkSync(zipPath)
 }

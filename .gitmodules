@@ -1,24 +1,6 @@
-[submodule "third_party/modp_b64"]
-	path = third_party/modp_b64
-	url = https://chromium.googlesource.com/chromium/src/third_party/modp_b64
-[submodule "third_party/icu"]
-	path = third_party/icu
-	url = https://chromium.googlesource.com/chromium/deps/icu
-[submodule "third_party/zlib"]
-	path = third_party/zlib
-	url = https://chromium.googlesource.com/chromium/src/third_party/zlib
 [submodule "tools/gyp"]
 	path = tools/gyp
 	url = https://chromium.googlesource.com/external/gyp
-[submodule "third_party/tcmalloc/chromium"]
-	path = third_party/tcmalloc/chromium
-	url = https://chromium.googlesource.com/chromium/src/third_party/tcmalloc/chromium
-[submodule "base"]
-	path = base
-	url = https://github.com/yue/base
-[submodule "third_party/ced/src"]
-	path = third_party/ced/src
-	url = https://github.com/google/compact_enc_det.git
 [submodule "testing"]
 	path = testing
 	url = https://chromium.googlesource.com/chromium/src/testing
@@ -30,10 +12,10 @@
 	url = https://github.com/yue/gn
 [submodule "buildtools/third_party/libc++/trunk"]
 	path = buildtools/third_party/libc++/trunk
-	url = https://chromium.googlesource.com/chromium/llvm-project/libcxx.git
+	url = https://chromium.googlesource.com/external/github.com/llvm/llvm-project/libcxx.git
 [submodule "buildtools/third_party/libc++abi/trunk"]
 	path = buildtools/third_party/libc++abi/trunk
-	url = https://chromium.googlesource.com/chromium/llvm-project/libcxxabi.git
+	url = https://chromium.googlesource.com/external/github.com/llvm/llvm-project/libcxxabi.git
 [submodule "buildtools/third_party/libunwind/trunk"]
 	path = buildtools/third_party/libunwind/trunk
-	url = https://chromium.googlesource.com/external/llvm.org/libunwind.git
+	url = https://chromium.googlesource.com/external/github.com/llvm/llvm-project/libunwind.git

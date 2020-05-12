@@ -8,26 +8,21 @@ This file is copied to the build directory as part of toolchain setup and
 is used to set up calls to tools used by the build that need wrappers.
 """
 
+from __future__ import print_function
+
 import os
 import re
 import shutil
 import subprocess
 import stat
-import string
 import sys
+
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # A regex matching an argument corresponding to the output filename passed to
 # link.exe.
 _LINK_EXE_OUT_ARG = re.compile('/OUT:(?P<out>.+)$', re.IGNORECASE)
-_LINK_PDB_OUT_ARG = re.compile('/PDB:(?P<out>.+)$', re.IGNORECASE)
-_LINK_ERROR = re.compile('.* error LNK(\d+):')
-
-# Retry links when this error is hit, to try to deal with crbug.com/782660
-_LINKER_RETRY_ERRORS = 1201
-# Maximum number of linker retries.
-_LINKER_RETRIES = 3
 
 def main(args):
   exit_code = WinTool().Dispatch(args)
@@ -87,10 +82,6 @@ class WinTool(object):
     kvs = [item.split('=', 1) for item in pairs]
     return dict(kvs)
 
-  def ExecStamp(self, path):
-    """Simple stamp command."""
-    open(path, 'w').close()
-
   def ExecDeleteFile(self, path):
     """Simple file delete command."""
     if os.path.exists(path):
@@ -140,103 +131,46 @@ class WinTool(object):
     #   Popen(['/bin/sh', '-c', args[0], args[1], ...])"
     # For that reason, since going through the shell doesn't seem necessary on
     # non-Windows don't do that there.
-    pdb_name = None
+    pe_name = None
     for arg in args:
-      m = _LINK_PDB_OUT_ARG.match(arg)
+      m = _LINK_EXE_OUT_ARG.match(arg)
       if m:
-        pdb_name = m.group('out')
-    for retry_count in range(_LINKER_RETRIES):
-      retry = False
-      link = subprocess.Popen(args, shell=sys.platform == 'win32', env=env,
-                              stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-      # Read output one line at a time as it shows up to avoid OOM failures when
-      # GBs of output is produced.
-      for line in link.stdout:
-        if (not line.startswith('   Creating library ') and
-            not line.startswith('Generating code') and
-            not line.startswith('Finished generating code')):
-          m = _LINK_ERROR.match(line)
-          if m:
-            error_code = int(m.groups()[0])
-            if error_code == _LINKER_RETRY_ERRORS:
-              print 'Retrying link due to error %d' % error_code
-              if pdb_name:
-                shutil.copyfile(pdb_name, pdb_name + 'failure_backup')
-              retry = True
-          print line,
-      result = link.wait()
-      if not retry:
-        break
-    return result
+        pe_name = m.group('out')
+    link = subprocess.Popen(args, shell=sys.platform == 'win32', env=env,
+                            stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    # Read output one line at a time as it shows up to avoid OOM failures when
+    # GBs of output is produced.
+    for line in link.stdout:
+      if (not line.startswith('   Creating library ') and
+          not line.startswith('Generating code') and
+          not line.startswith('Finished generating code')):
+        print(line)
+    return link.wait()
 
   def ExecAsmWrapper(self, arch, *args):
     """Filter logo banner from invocations of asm.exe."""
     env = self._GetEnv(arch)
+    if sys.platform == 'win32':
+      # Windows ARM64 uses clang-cl as assembler which has '/' as path
+      # separator, convert it to '\\' when running on Windows.
+      args = list(args) # *args is a tuple by default, which is read-only
+      args[0] = args[0].replace('/', '\\')
     popen = subprocess.Popen(args, shell=True, env=env,
                              stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     out, _ = popen.communicate()
     for line in out.splitlines():
-      # Split to avoid triggering license checks:
-      if (not line.startswith('Copy' + 'right (C' +
-                              ') Microsoft Corporation') and
-          not line.startswith('Microsoft (R) Macro Assembler') and
-          not line.startswith(' Assembling: ') and
-          line):
-        print line
+      if not line.startswith(' Assembling: '):
+        print(line)
     return popen.returncode
 
   def ExecRcWrapper(self, arch, *args):
     """Converts .rc files to .res files."""
     env = self._GetEnv(arch)
-
-    # We run two resource compilers:
-    # 1. A custom one at build/toolchain/win/rc/rc.py which can run on
-    #    non-Windows, and which has /showIncludes support so we can track
-    #    dependencies (e.g. on .ico files) of .rc files.
-    # 2. On Windows, regular Microsoft rc.exe, to make sure rc.py produces
-    #    bitwise identical output.
-
-    # 1. Run our rc.py.
-    # Also pass /showIncludes to track dependencies of .rc files.
     args = list(args)
     rcpy_args = args[:]
     rcpy_args[0:1] = [sys.executable, os.path.join(BASE_DIR, 'rc', 'rc.py')]
-    rcpy_res_output = rcpy_args[-2]
-    assert rcpy_res_output.startswith('/fo')
-    assert rcpy_res_output.endswith('.res')
-    rc_res_output = rcpy_res_output + '_ms_rc'
-    args[-2] = rc_res_output
     rcpy_args.append('/showIncludes')
-    rc_exe_exit_code = subprocess.call(rcpy_args, env=env)
-    if rc_exe_exit_code == 0:
-      # Since tool("rc") can't have deps, add deps on this script and on rc.py
-      # and its deps here, so that rc edges become dirty if rc.py changes.
-      print 'Note: including file: ../../build/toolchain/win/tool_wrapper.py'
-      print 'Note: including file: ../../build/toolchain/win/rc/rc.py'
-      print 'Note: including file: ../../build/toolchain/win/rc/linux64/rc.sha1'
-      print 'Note: including file: ../../build/toolchain/win/rc/mac/rc.sha1'
-      print 'Note: including file: ../../build/toolchain/win/rc/win/rc.exe.sha1'
-
-    # 2. Run Microsoft rc.exe.
-    if sys.platform == 'win32' and rc_exe_exit_code == 0:
-      popen = subprocess.Popen(args, shell=True, env=env,
-                               stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-      out, _ = popen.communicate()
-      # Filter logo banner from invocations of rc.exe. Older versions of RC
-      # don't support the /nologo flag.
-      for line in out.splitlines():
-        if (not line.startswith('Microsoft (R) Windows (R) Resource Compiler')
-            and not line.startswith('Copy' + 'right (C' +
-                                ') Microsoft Corporation')
-            and line):
-          print line
-      rc_exe_exit_code = popen.returncode
-      # Assert Microsoft rc.exe and rc.py produced identical .res files.
-      if rc_exe_exit_code == 0:
-        import filecmp
-        # Strip "/fo" prefix.
-        assert filecmp.cmp(rc_res_output[3:], rcpy_res_output[3:])
-    return rc_exe_exit_code
+    return subprocess.call(rcpy_args, env=env)
 
   def ExecActionWrapper(self, arch, rspfile, *dirname):
     """Runs an action command line from a response file using the environment
@@ -244,7 +178,7 @@ class WinTool(object):
     env = self._GetEnv(arch)
     # TODO(scottmg): This is a temporary hack to get some specific variables
     # through to actions that are set after GN-time. http://crbug.com/333738.
-    for k, v in os.environ.iteritems():
+    for k, v in os.environ.items():
       if k not in env:
         env[k] = v
     args = open(rspfile).read()

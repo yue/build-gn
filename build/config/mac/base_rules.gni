@@ -4,8 +4,8 @@
 
 # This file contains rules that are shared between Mac and iOS.
 
-import("//build/toolchain/toolchain.gni")
 import("//build/config/mac/symbols.gni")
+import("//build/toolchain/toolchain.gni")
 
 if (is_mac) {
   import("//build/config/mac/mac_sdk.gni")
@@ -38,22 +38,15 @@ template("convert_plist") {
                              "deps",
                            ])
 
-    script = "//build/config/mac/xcrun.py"
-    sources = [
-      invoker.source,
-    ]
-    outputs = [
-      invoker.output,
-    ]
-    args = []
-    if (!use_system_xcode) {
-      args += [
-        "--developer_dir",
-        hermetic_xcode_path,
-      ]
-    }
-    args += [
-      "plutil",
+    script = "//build/gn_run_binary.py"
+    sources = [ invoker.source ]
+    outputs = [ invoker.output ]
+
+    # /usr/bin/plutil is present on all images of macOS. If at some point in the
+    # future we need to ship our own copy [e.g. for cross-compile], we can add a
+    # layer of indirection.
+    args = [
+      "/usr/bin/plutil",
       "-convert",
       invoker.format,
       "-o",
@@ -106,9 +99,7 @@ template("compile_plist") {
 
     script = "//build/config/mac/plist_util.py"
     sources = invoker.plist_templates
-    outputs = [
-      _merged_name,
-    ]
+    outputs = [ _merged_name ]
     args = [
              "merge",
              "-f=" + invoker.format,
@@ -123,12 +114,8 @@ template("compile_plist") {
                              "visibility",
                            ])
     script = "//build/config/mac/plist_util.py"
-    sources = [
-      _merged_name,
-    ]
-    outputs = [
-      _output_name,
-    ]
+    sources = [ _merged_name ]
+    outputs = [ _output_name ]
     args = [
       "substitute",
       "-f=" + invoker.format,
@@ -138,9 +125,7 @@ template("compile_plist") {
     foreach(_substitution, invoker.substitutions) {
       args += [ "-s=$_substitution" ]
     }
-    deps = [
-      ":$_merge_target",
-    ]
+    deps = [ ":$_merge_target" ]
   }
 }
 
@@ -243,62 +228,15 @@ template("info_plist") {
       "XCODE_VERSION=$xcode_version",
     ]
     if (is_mac) {
-      substitutions += [ "MACOSX_DEPLOYMENT_TARGET=$mac_deployment_target" ]
+      substitutions += [
+        "MACOSX_DEPLOYMENT_TARGET=$mac_deployment_target",
+        "CHROMIUM_MIN_SYSTEM_VERSION=$mac_min_system_version",
+      ]
     } else if (is_ios) {
       substitutions += [ "IOS_DEPLOYMENT_TARGET=$ios_deployment_target" ]
     }
     if (defined(invoker.extra_substitutions)) {
       substitutions += invoker.extra_substitutions
     }
-  }
-}
-
-# Template to compile .xib and .storyboard files.
-#
-# Arguments
-#
-#     sources:
-#         list of string, sources to compile
-#
-#     ibtool_flags:
-#         (optional) list of string, additional flags to pass to the ibtool
-template("compile_ib_files") {
-  action_foreach(target_name) {
-    forward_variables_from(invoker,
-                           [
-                             "testonly",
-                             "visibility",
-                           ])
-    assert(defined(invoker.sources),
-           "sources must be specified for $target_name")
-    assert(defined(invoker.output_extension),
-           "output_extension must be specified for $target_name")
-
-    ibtool_flags = []
-    if (defined(invoker.ibtool_flags)) {
-      ibtool_flags = invoker.ibtool_flags
-    }
-
-    _output_extension = invoker.output_extension
-
-    script = "//build/config/mac/compile_ib_files.py"
-    sources = invoker.sources
-    outputs = [
-      "$target_gen_dir/$target_name/{{source_name_part}}.$_output_extension",
-    ]
-    args = [
-      "--input",
-      "{{source}}",
-      "--output",
-      rebase_path(
-          "$target_gen_dir/$target_name/{{source_name_part}}.$_output_extension"),
-    ]
-    if (!use_system_xcode) {
-      args += [
-        "--developer_dir",
-        hermetic_xcode_path,
-      ]
-    }
-    args += ibtool_flags
   }
 }

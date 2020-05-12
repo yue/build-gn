@@ -8,22 +8,34 @@ declare_args() {
   # Set to true to enable distributed compilation using Goma.
   use_goma = false
 
-  # Set to true to disable goma without update of command line.
-  # Changing this value does not cause full rebuild.
-  disable_goma = false
+  # This flag is for ChromeOS compiler wrapper.
+  # By passing gomacc path via cmd-line arg, ChromeOS' compiler wrapper
+  # invokes gomacc inside it.
+  needs_gomacc_path_arg = false
 
   # Set the default value based on the platform.
   if (host_os == "win") {
     # Absolute directory containing the gomacc.exe binary.
     goma_dir = "C:\src\goma\goma-win64"
   } else {
-    # Absolute directory containing the gomacc binary.
-    goma_dir = getenv("HOME") + "/goma"
+    if (getenv("GOMA_DIR") != "") {
+      # Absolute directory containing the gomacc binary.
+      goma_dir = getenv("GOMA_DIR")
+    } else {
+      # Absolute directory containing the gomacc binary.
+      goma_dir = getenv("HOME") + "/goma"
+    }
   }
 }
 
-assert(!(is_win && host_os != "win") || !use_goma,
-       "goma does not yet work in win cross builds, b/64390790")
+declare_args() {
+  # TODO(crbug.com/726475): true if use_goma = true in the future.
+  use_java_goma = false
 
-assert(!disable_goma || use_goma,
-       "disable_goma = true has no meaning if use_goma = false")
+  # Auto-configure for Goma RBE backend.
+  # TODO(crbug.com/1015730): true if use_goma = true in the future.
+  ios_use_goma_rbe = false
+}
+
+assert(!is_win || !use_goma || is_clang,
+       "cl.exe does not work on goma, use clang")

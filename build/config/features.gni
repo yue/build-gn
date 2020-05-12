@@ -15,11 +15,24 @@
 # of //build/config/BUILDCONFIG.gn.
 
 import("//build/config/chrome_build.gni")
-if (is_android) {
-  import("//build/config/android/config.gni")
-}
+import("//build/config/chromecast_build.gni")
 
 declare_args() {
+  # Enables proprietary codecs and demuxers; e.g. H264, AAC, MP3, and MP4.
+  # We always build Google Chrome and Chromecast with proprietary codecs.
+  #
+  # Note: this flag is used by WebRTC which is DEPSed into Chrome. Moving it
+  # out of //build will require using the build_overrides directory.
+  # PATCH(build-gn): This is Chromium only.
+  proprietary_codecs = false
+
+  # libudev usage. This currently only affects the content layer.
+  # PATCH(build-gn): This is Chromium only.
+  use_udev = false
+
+  use_dbus = false
+
+  use_gio = false
 }
 #
 # =============================================

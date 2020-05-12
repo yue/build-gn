@@ -2,9 +2,10 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//build/config/sysroot.gni")
+import("//build/config/c++/c++.gni")
 import("//build/config/mac/mac_sdk.gni")
 import("//build/config/mac/symbols.gni")
+import("//build/config/sysroot.gni")
 
 # This is included by reference in the //build/config/compiler config that
 # is applied to all targets. It is here to separate out the logic.
@@ -39,12 +40,12 @@ config("compiler") {
 
   ldflags = common_mac_flags
 
-  # Create a new read-only segment for protected memory. The default segments
-  # (__TEXT and __DATA) are mapped read-execute and read-write by default.
-  ldflags += [ "-segprot", "PROTECTED_MEMORY", "rw", "r" ]
-
   if (save_unstripped_output) {
     ldflags += [ "-Wcrl,unstripped," + rebase_path(root_out_dir) ]
+  }
+
+  if (export_libcxxabi_from_executables) {
+    ldflags += [ "-Wl,-undefined,dynamic_lookup" ]
   }
 }
 
@@ -67,7 +68,7 @@ config("runtime_library") {
   # macros that collide with common names, like 'check', 'require', and
   # 'verify'.
   # http://opensource.apple.com/source/CarbonHeaders/CarbonHeaders-18.1/AssertMacros.h
-  defines = [ "__ASSERT_MACROS_DEFINE_VERSIONS_WITHOUT_UNDERSCORE=0" ]
+  defines = [ "__ASSERT_MACROS_DEFINE_VERSIONS_WITHOUT_UNDERSCORES=0" ]
 }
 
 # On Mac, this is used for everything except static libraries.
@@ -90,8 +91,8 @@ config("mac_dynamic_flags") {
 # //build/toolchain/mac/linker_driver.py.
 # Remove this config if a target wishes to change the arguments passed to the
 # strip command during linking. This config by default strips all symbols
-# from a binary, but some targets may wish to specify a saves file to preserve
-# specific symbols.
+# from a binary, but some targets may wish to specify an exports file to
+# preserve specific symbols.
 config("strip_all") {
   if (enable_stripping) {
     ldflags = [ "-Wcrl,strip,-x,-S" ]

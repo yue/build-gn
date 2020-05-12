@@ -133,11 +133,9 @@ declare_args() {
   # Whether we're a traditional desktop unix.
   is_desktop_linux = current_os == "linux"
 
-  # Set to true when compiling with the Clang compiler. Typically this is used
-  # to configure warnings.
+  # Set to true when compiling with the Clang compiler.
   # PATCH(build-gn): Don't use clang by default on Linux and Windows.
-  is_clang =
-      current_os == "mac" || current_os == "ios" || current_os == "chromeos"
+  is_clang = current_os == "mac"
 
   # Allows the path to a custom target toolchain to be injected as a single
   # argument, and set as the default toolchain.
@@ -162,8 +160,7 @@ declare_args() {
   #
   # For more information see
   # https://chromium.googlesource.com/chromium/src/+/master/docs/component_build.md
-  is_component_build =
-      is_debug && current_os != "ios" && current_os != "fuchsia"
+  is_component_build = is_debug && current_os != "ios"
 }
 
 assert(!(is_debug && is_official_build), "Can't do official debug builds")
@@ -189,10 +186,6 @@ if (host_toolchain == "") {
 
   if (host_os == "linux") {
     if (target_os != "linux") {
-      # TODO(dpranke) - is_clang normally applies only to the target
-      # build, and there is no way to indicate that you want to override
-      # it for both the target build *and* the host build. Do we need to
-      # support this?
       host_toolchain = "//build/toolchain/linux:clang_$host_cpu"
     } else if (is_clang) {
       host_toolchain = "//build/toolchain/linux:clang_$host_cpu"
@@ -202,12 +195,19 @@ if (host_toolchain == "") {
   } else if (host_os == "mac") {
     host_toolchain = "//build/toolchain/mac:clang_$host_cpu"
   } else if (host_os == "win") {
-    # On Windows always use the target CPU for host builds. On the
+    # On Windows always use the target CPU for host builds for x86/x64. On the
     # configurations we support this will always work and it saves build steps.
-    if (is_clang) {
-      host_toolchain = "//build/toolchain/win:win_clang_$target_cpu"
+    # Windows ARM64 targets require an x64 host for cross build.
+    if (target_cpu == "x86" || target_cpu == "x64") {
+      if (is_clang) {
+        host_toolchain = "//build/toolchain/win:win_clang_$target_cpu"
+      } else {
+        host_toolchain = "//build/toolchain/win:$target_cpu"
+      }
+    } else if (is_clang) {
+      host_toolchain = "//build/toolchain/win:win_clang_$host_cpu"
     } else {
-      host_toolchain = "//build/toolchain/win:$target_cpu"
+      host_toolchain = "//build/toolchain/win:$host_cpu"
     }
   } else if (host_os == "aix") {
     host_toolchain = "//build/toolchain/aix:$host_cpu"
@@ -237,21 +237,21 @@ if (target_os == "android") {
   assert(host_os == "mac", "Mac cross-compiles are unsupported.")
   _default_toolchain = host_toolchain
 } else if (target_os == "win") {
-  # On Windows we use the same toolchain for host and target by default.
+  # On Windows, we use the same toolchain for host and target by default.
   # Beware, win cross builds have some caveats, see docs/win_cross.md
-  # TODO(thakis): See if we want to make 32-bit builds on mac hosts work.
-  assert(host_os != "mac" || target_cpu == "x64",
-         "Mac hosts can only build 64-bit chrome/win, https://crbug.com/794838")
   if (is_clang) {
     _default_toolchain = "//build/toolchain/win:win_clang_$target_cpu"
   } else {
     _default_toolchain = "//build/toolchain/win:$target_cpu"
   }
+} else if (target_os == "winuwp") {
+  # Only target WinUWP on for a Windows store application and only
+  # x86, x64 and arm are supported target CPUs.
+  assert(target_cpu == "x86" || target_cpu == "x64" || target_cpu == "arm" ||
+         target_cpu == "arm64")
+  _default_toolchain = "//build/toolchain/win:uwp_$target_cpu"
 } else if (target_os == "aix") {
   _default_toolchain = "//build/toolchain/aix:$target_cpu"
-} else if (target_os == "winrt_81" || target_os == "winrt_81_phone" ||
-           target_os == "winrt_10") {
-  _default_toolchain = "//build/toolchain/win:winrt_$target_cpu"
 } else {
   assert(false, "Unsupported target_os: $target_os")
 }
@@ -274,7 +274,7 @@ if (custom_toolchain != "") {
 # - is_android, is_chromeos, is_ios, and is_win should be obvious.
 # - is_mac is set only for desktop Mac. It is not set on iOS.
 # - is_posix is true for mac and any Unix-like system (basically everything
-#   except Windows).
+#   except Fuchsia and Windows).
 # - is_linux is true for desktop Linux and ChromeOS, but not Android (which is
 #   generally too different despite being based on the Linux kernel).
 #
@@ -282,100 +282,16 @@ if (custom_toolchain != "") {
 # aix or one of the BSDs. If you need to check these, just check the
 # current_os value directly.
 
-if (current_os == "win" || current_os == "winrt_81" ||
-    current_os == "winrt_81_phone" || current_os == "winrt_10") {
-  is_android = false
-  is_chromeos = false
-  is_fuchsia = false
-  is_ios = false
-  is_linux = false
-  is_mac = false
-  is_nacl = false
-  is_posix = false
-  is_win = true
-} else if (current_os == "mac") {
-  is_android = false
-  is_chromeos = false
-  is_fuchsia = false
-  is_ios = false
-  is_linux = false
-  is_mac = true
-  is_nacl = false
-  is_posix = true
-  is_win = false
-} else if (current_os == "android") {
-  is_android = true
-  is_chromeos = false
-  is_fuchsia = false
-  is_ios = false
-  is_linux = false
-  is_mac = false
-  is_nacl = false
-  is_posix = true
-  is_win = false
-} else if (current_os == "chromeos") {
-  is_android = false
-  is_chromeos = true
-  is_fuchsia = false
-  is_ios = false
-  is_linux = true
-  is_mac = false
-  is_nacl = false
-  is_posix = true
-  is_win = false
-} else if (current_os == "nacl") {
-  # current_os == "nacl" will be passed by the nacl toolchain definition.
-  # It is not set by default or on the command line. We treat is as a
-  # Posix variant.
-  is_android = false
-  is_chromeos = false
-  is_fuchsia = false
-  is_ios = false
-  is_linux = false
-  is_mac = false
-  is_nacl = true
-  is_posix = true
-  is_win = false
-} else if (current_os == "fuchsia") {
-  is_android = false
-  is_chromeos = false
-  is_fuchsia = true
-  is_ios = false
-  is_linux = false
-  is_mac = false
-  is_nacl = false
-  is_posix = true
-  is_win = false
-} else if (current_os == "ios") {
-  is_android = false
-  is_chromeos = false
-  is_fuchsia = false
-  is_ios = true
-  is_linux = false
-  is_mac = false
-  is_nacl = false
-  is_posix = true
-  is_win = false
-} else if (current_os == "linux") {
-  is_android = false
-  is_chromeos = false
-  is_fuchsia = false
-  is_ios = false
-  is_linux = true
-  is_mac = false
-  is_nacl = false
-  is_posix = true
-  is_win = false
-} else if (current_os == "aix") {
-  is_android = false
-  is_chromeos = false
-  is_ios = false
-  is_linux = false
-  is_mac = false
-  is_nacl = false
-  is_posix = true
-  is_win = false
-}
+is_android = current_os == "android"
+is_chromeos = current_os == "chromeos"
+is_fuchsia = current_os == "fuchsia"
+is_ios = current_os == "ios"
+is_linux = current_os == "chromeos" || current_os == "linux"
+is_mac = current_os == "mac"
+is_nacl = current_os == "nacl"
+is_win = current_os == "win" || current_os == "winuwp"
+
+is_posix = !is_win && !is_fuchsia
 
 # =============================================================================
 # SOURCES FILTERS
@@ -453,9 +369,7 @@ if (!is_linux) {
     "*_linux_unittest.h",
     "*_linux_unittest.cc",
     "*\blinux/*",
-  ]
-  # PATCH(build-gn): Support GTK.
-  sources_assignment_filter += [
+    # PATCH(build-gn): Support GTK.
     "*_gtk.h",
     "*_gtk.cc",
     "*_gtk_unittest.h",
@@ -520,8 +434,8 @@ set_sources_assignment_filter(sources_assignment_filter)
 default_compiler_configs = [
   "//build/config:feature_flags",
   "//build/config/compiler:afdo",
+  "//build/config/compiler:afdo_optimize_size",
   "//build/config/compiler:compiler",
-  "//build/config/compiler:clang_stackrealign",
   "//build/config/compiler:compiler_arm_fpu",
   "//build/config/compiler:compiler_arm_thumb",
   "//build/config/compiler:chromium_code",
@@ -529,15 +443,17 @@ default_compiler_configs = [
   "//build/config/compiler:default_optimization",
   "//build/config/compiler:default_stack_frames",
   "//build/config/compiler:default_symbols",
-
-  # TODO(crbug.com/795158): Remove once libwidevinecdmadapter.so is fixed.
-  "//build/config/compiler:default_fatal_linker_warnings",
+  "//build/config/compiler:export_dynamic",
   "//build/config/compiler:no_exceptions",
   "//build/config/compiler:no_rtti",
   "//build/config/compiler:runtime_library",
+  "//build/config/compiler:thin_archive",
+  "//build/config/compiler:default_init_stack_vars",
+  "//build/config/compiler/pgo:default_pgo_flags",
   "//build/config/coverage:default_coverage",
   "//build/config/sanitizers:default_sanitizer_flags",
 ]
+
 if (is_win) {
   default_compiler_configs += [
     "//build/config/win:default_crt",
@@ -545,12 +461,7 @@ if (is_win) {
     "//build/config/win:nominmax",
     "//build/config/win:unicode",
     "//build/config/win:winver",
-    "//build/config/win:vs_code_analysis",
   ]
-}
-if (current_os == "winrt_81" || current_os == "winrt_81_phone" ||
-    current_os == "winrt_10") {
-  default_compiler_configs += [ "//build/config/win:target_winrt" ]
 }
 
 if (is_posix) {
@@ -560,9 +471,13 @@ if (is_posix) {
   }
 }
 
+if (is_fuchsia) {
+  default_compiler_configs += [ "//build/config/gcc:symbol_visibility_hidden" ]
+}
+
 if (is_android) {
   default_compiler_configs +=
-      [ "//build/config/android:default_cygprofile_instrumentation" ]
+      [ "//build/config/android:default_orderfile_instrumentation" ]
 }
 
 if (is_win) {
@@ -615,6 +530,13 @@ default_executable_configs = default_compiler_configs + [
                                "//build/config:default_libs",
                                "//build/config:executable_config",
                              ] + _linker_configs
+
+if (is_win) {
+  # Currently only turn on linker CFI for executables, and position it so it can
+  # be removed when needed.
+  default_executable_configs += [ "//build/config/win:cfi_linker" ]
+}
+
 set_defaults("executable") {
   configs = default_executable_configs
 }
@@ -643,6 +565,73 @@ set_defaults("loadable_module") {
   }
 }
 
+# Sets default dependencies for executable and shared_library targets.
+#
+# Variables
+#   no_default_deps: If true, no standard dependencies will be added.
+#       Targets that set this usually also want to remove
+#       "//build/config/compiler:runtime_library" from configs (to remove
+#       its subconfig "//build/config/c++:runtime_library").
+foreach(_target_type,
+        [
+          "executable",
+          "loadable_module",
+          "shared_library",
+        ]) {
+  template(_target_type) {
+    _target_name = target_name
+    target(_target_type, _target_name) {
+      forward_variables_from(invoker, "*", [ "no_default_deps" ])
+      if (!defined(deps)) {
+        deps = []
+      }
+      if (!defined(invoker.no_default_deps) || !invoker.no_default_deps) {
+        # This pulls in one of:
+        # //build/config:executable_deps
+        # //build/config:loadable_module_deps
+        # //build/config:shared_library_deps
+        # (This explicit list is so that grepping for these configs finds where
+        # they are used.)
+        deps += [ "//build/config:${_target_type}_deps" ]
+      }
+
+      # On Android, write shared library output file to metadata. We will use
+      # this information to, for instance, collect all shared libraries that
+      # should be packaged into an APK.
+      if (!defined(invoker.metadata) && is_android && (_target_type ==
+                                                       "shared_library" ||
+                                                       _target_type ==
+                                                       "loadable_module")) {
+        _output_name = _target_name
+        if (defined(invoker.output_name)) {
+          _output_name = invoker.output_name
+        }
+
+        # Remove 'lib' prefix from output name if it exists.
+        _magic_prefix = "$0x01$0x01"
+        _output_name = string_replace("${_magic_prefix}${_output_name}",
+                                      "${_magic_prefix}lib",
+                                      _magic_prefix,
+                                      1)
+        _output_name = string_replace(_output_name, _magic_prefix, "", 1)
+
+        if (defined(output_extension)) {
+          _shlib_extension = ".$output_extension"
+        } else if (is_component_build && _target_type != "loadable_module") {
+          _shlib_extension = ".cr.so"
+        } else {
+          _shlib_extension = ".so"
+        }
+
+        metadata = {
+          shared_libraries =
+              [ "$root_out_dir/lib${_output_name}${_shlib_extension}" ]
+        }
+      }
+    }
+  }
+}
+
 # ==============================================================================
 # COMPONENT SETUP
 # ==============================================================================
@@ -665,24 +654,9 @@ template("component") {
     assert(invoker.static_component_type == "static_library" ||
            invoker.static_component_type == "source_set")
     _component_mode = invoker.static_component_type
-  } else if (is_android || !defined(invoker.sources)) {
+  } else if (!defined(invoker.sources)) {
     # When there are no sources defined, use a source set to avoid creating
     # an empty static library (which generally don't work).
-    #
-    # When we changed components to default from source sets to static
-    # libraries, an Android benchmark regressed slightly
-    # (https://crbug.com/619593). We don't have a good theory on why this might
-    # be since theoretically it should be the same. It could be something as
-    # silly as random code locality luck.
-    #
-    # There seems to be no build-time performance hit to using source sets on
-    # Android (the normal reason for defaulting to static libraries), so we
-    # make the default on Android to be source set.
-    #
-    # If it's been a long time since this was added and you're skeptical,
-    # please feel free to remove the Android exception and see if any
-    # benchmarks obviously regress. If not, it would be great to standardize
-    # with the rest of the platforms.
     _component_mode = "source_set"
   } else {
     _component_mode = "static_library"
@@ -697,13 +671,6 @@ template("component") {
     # See http://crbug.com/594610
     forward_variables_from(invoker, [ "visibility" ])
     forward_variables_from(invoker, "*", [ "visibility" ])
-
-    # All shared libraries must have the sanitizer deps to properly link in
-    # asan mode (this target will be empty in other cases).
-    if (!defined(deps)) {
-      deps = []
-    }
-    deps += [ "//build/config:exe_and_shlib_deps" ]
   }
 }
 

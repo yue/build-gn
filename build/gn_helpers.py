@@ -19,6 +19,14 @@ To use in a random python file in the build:
 Where the sequence of parameters to join is the relative path from your source
 file to the build directory."""
 
+import os
+import re
+import sys
+
+
+IMPORT_RE = re.compile(r'^import\("//(\S+)"\)')
+
+
 class GNException(Exception):
   pass
 
@@ -29,14 +37,14 @@ def ToGNString(value, allow_dicts = True):
   allow_dicts indicates if this function will allow converting dictionaries
   to GN scopes. This is only possible at the top level, you can't nest a
   GN scope in a list, so this should be set to False for recursive calls."""
-  if isinstance(value, basestring):
+  if isinstance(value, str):
     if value.find('\n') >= 0:
       raise GNException("Trying to print a string with a newline in it.")
     return '"' + \
         value.replace('\\', '\\\\').replace('"', '\\"').replace('$', '\\$') + \
         '"'
 
-  if isinstance(value, unicode):
+  if sys.version_info.major < 3 and isinstance(value, unicode):
     return ToGNString(value.encode('utf-8'))
 
   if isinstance(value, bool):
@@ -52,7 +60,7 @@ def ToGNString(value, allow_dicts = True):
       raise GNException("Attempting to recursively print a dictionary.")
     result = ""
     for key in sorted(value):
-      if not isinstance(key, basestring):
+      if not isinstance(key, str) and not isinstance(key, unicode):
         raise GNException("Dictionary key is not a string.")
       result += "%s = %s\n" % (key, ToGNString(value[key], False))
     return result
@@ -63,7 +71,7 @@ def ToGNString(value, allow_dicts = True):
   raise GNException("Unsupported type when printing to GN.")
 
 
-def FromGNString(input):
+def FromGNString(input_string):
   """Converts the input string from a GN serialized value to Python values.
 
   For details on supported types see GNValueParser.Parse() below.
@@ -99,11 +107,11 @@ def FromGNString(input):
   using string interpolation on a list (as in the top example) the embedded
   strings will be quoted and escaped according to GN rules so the list can be
   re-parsed to get the same result."""
-  parser = GNValueParser(input)
+  parser = GNValueParser(input_string)
   return parser.Parse()
 
 
-def FromGNArgs(input):
+def FromGNArgs(input_string):
   """Converts a string with a bunch of gn arg assignments into a Python dict.
 
   Given a whitespace-separated list of
@@ -120,7 +128,7 @@ def FromGNArgs(input):
   This routine is meant to handle only the simple sorts of values that
   arise in parsing --args.
   """
-  parser = GNValueParser(input)
+  parser = GNValueParser(input_string)
   return parser.ParseArgs()
 
 
@@ -167,9 +175,47 @@ class GNValueParser(object):
   def IsDone(self):
     return self.cur == len(self.input)
 
+  def ReplaceImports(self):
+    """Replaces import(...) lines with the contents of the imports.
+
+    Recurses on itself until there are no imports remaining, in the case of
+    nested imports.
+    """
+    lines = self.input.splitlines()
+    if not any(line.startswith('import(') for line in lines):
+      return
+    for line in lines:
+      if not line.startswith('import('):
+        continue
+      regex_match = IMPORT_RE.match(line)
+      if not regex_match:
+        raise GNException('Not a valid import string: %s' % line)
+      import_path = os.path.join(
+          os.path.dirname(__file__), os.pardir, regex_match.group(1))
+      with open(import_path) as f:
+        imported_args = f.read()
+      self.input = self.input.replace(line, imported_args)
+    # Call ourselves again if we've just replaced an import() with additional
+    # imports.
+    self.ReplaceImports()
+
+
   def ConsumeWhitespace(self):
     while not self.IsDone() and self.input[self.cur] in ' \t\n':
       self.cur += 1
+
+  def ConsumeComment(self):
+    if self.IsDone() or self.input[self.cur] != '#':
+      return
+
+    # Consume each comment, line by line.
+    while not self.IsDone() and self.input[self.cur] == '#':
+      # Consume the rest of the comment, up until the end of the line.
+      while not self.IsDone() and self.input[self.cur] != '\n':
+        self.cur += 1
+      # Move the cursor to the next line (if there is one).
+      if not self.IsDone():
+        self.cur += 1
 
   def Parse(self):
     """Converts a string representing a printed GN value to the Python type.
@@ -182,7 +228,7 @@ class GNValueParser(object):
 
     - GN strings (double-quoted as in '"asdf"') will be converted to Python
       strings with GN escaping rules. GN string interpolation (embedded
-      variables preceeded by $) are not supported and will be returned as
+      variables preceded by $) are not supported and will be returned as
       literals.
 
     - GN lists ('[1, "asdf", 3]') will be converted to Python lists.
@@ -202,7 +248,9 @@ class GNValueParser(object):
     """
     d = {}
 
+    self.ReplaceImports()
     self.ConsumeWhitespace()
+    self.ConsumeComment()
     while not self.IsDone():
       ident = self._ParseIdent()
       self.ConsumeWhitespace()
@@ -212,6 +260,7 @@ class GNValueParser(object):
       self.ConsumeWhitespace()
       val = self._ParseAllowTrailing()
       self.ConsumeWhitespace()
+      self.ConsumeComment()
       d[ident] = val
 
     return d
@@ -237,22 +286,22 @@ class GNValueParser(object):
       raise GNException("Unexpected token: " + self.input[self.cur:])
 
   def _ParseIdent(self):
-    id = ''
+    ident = ''
 
     next_char = self.input[self.cur]
     if not next_char.isalpha() and not next_char=='_':
       raise GNException("Expected an identifier: " + self.input[self.cur:])
 
-    id += next_char
+    ident += next_char
     self.cur += 1
 
     next_char = self.input[self.cur]
     while next_char.isalpha() or next_char.isdigit() or next_char=='_':
-      id += next_char
+      ident += next_char
       self.cur += 1
       next_char = self.input[self.cur]
 
-    return id
+    return ident
 
   def ParseNumber(self):
     self.ConsumeWhitespace()

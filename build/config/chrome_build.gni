@@ -8,19 +8,22 @@ declare_args() {
   # resources).
   is_chrome_branded = false
 
-  # Break chrome.dll into multple pieces based on process type. Only available
-  # on Windows.
-  is_multi_dll_chrome = is_win && !is_component_build
-
   # Turn this on to generate order files. See
   # https://chromium.googlesource.com/chromium/src/+/master/docs/win_order_files.md
   generate_order_files = false
 }
 
-# Refers to the subdirectory for branding in various places including
-# chrome/app/theme.
-if (is_chrome_branded) {
-  branding_path_component = "google_chrome"
-} else {
-  branding_path_component = "chromium"
+declare_args() {
+  # Refers to the subdirectory for branding in various places including
+  # chrome/app/theme.
+  if (is_chrome_branded) {
+    branding_path_component = "google_chrome"
+  } else {
+    branding_path_component = "chromium"
+  }
+}
+
+declare_args() {
+  # The path to the BRANDING file in chrome/app/theme.
+  branding_file_path = "//chrome/app/theme/$branding_path_component/BRANDING"
 }

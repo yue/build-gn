@@ -4,23 +4,30 @@
 
 import("//build/toolchain/toolchain.gni")
 
+# There are two ways to enable code coverage instrumentation:
+# 1. When |use_clang_coverage| or |use_jacoco_coverage| is true and
+#    |coverage_instrumentation_input_file| is empty, all source files or
+#    Java class files are instrumented.
+# 2. When |use_clang_coverage| or |use_jacoco_coverage| is true and
+#    |coverage_instrumentation_input_file| is NOT empty and points to
+#    a text file on the file system, ONLY source files specified in the
+#    input file or Java class files related to source files are instrumented.
 declare_args() {
-  # Enable Clang's Source-based Code Coverage. This should not be used with
-  # is_component_build=true.
-  # TODO(metzman): Add an assertion that will prevent is_component_build=true
-  # from being passed as an argument to gn, but will not force toolchains that
-  # set is_component_build=true to set it to false.
+  # Enable Clang's Source-based Code Coverage.
   use_clang_coverage = false
+
+  # Enables JaCoCo Java code coverage.
+  use_jacoco_coverage = false
+
+  # The path to the coverage instrumentation input file should be a source root
+  # absolute path (e.g. //out/Release/coverage_instrumentation_input.txt), and
+  # the file consists of multiple lines where each line represents a path to a
+  # source file, and the paths must be relative to the root build directory.
+  # e.g. ../../base/task/post_task.cc for build directory 'out/Release'.
+  #
+  # NOTE that this arg will be non-op if use_clang_coverage is false.
+  coverage_instrumentation_input_file = ""
 }
 
 assert(!use_clang_coverage || is_clang,
        "Clang Source-based Code Coverage requires clang.")
-
-assert(!(use_clang_coverage && is_debug && is_component_build),
-       "If use_clang_coverage is true and is_debug is true (is_debug " +
-           "defaults to true), then is_component_build must be false.$0x0A" +
-           "Try adding is_component_build=false to your GN args.")
-
-assert(
-    !(use_clang_coverage && is_component_build),
-    "Clang Source-based Code Coverage is incompatible with is_component_build.")

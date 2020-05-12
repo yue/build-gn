@@ -13,13 +13,9 @@ let sysrootArch = {
 }[targetCpu]
 
 execSync('node scripts/update_gn.js')
-if (process.platform === 'linux') {
+if (process.platform == 'linux') {
   execSync('python tools/clang/scripts/update.py')
-}
-if (process.platform === 'linux') {
-  // TODO(zcbenz): Support more arch.
   execSync(`python build/linux/sysroot_scripts/install-sysroot.py --arch ${sysrootArch}`)
-  execSync('node scripts/update_gold.js')
 }
 
 execSync('git submodule sync --recursive')
@@ -27,31 +23,29 @@ execSync('git submodule update --init --recursive')
 
 const commonConfig = [
   'use_jumbo_build=true',
-  'use_allocator_shim=false',
+  'treat_warnings_as_errors=false',
   `target_cpu="${targetCpu}"`,
 ]
 const debugConfig = [
   'is_component_build=true',
   'is_debug=true',
-  'use_sysroot=false',
   'fatal_linker_warnings=false',
 ]
 const releaseConfig = [
   'is_component_build=false',
   'is_debug=false',
-  'use_sysroot=true',
-  'is_official_build=true',
 ]
 
 if (targetOs == 'linux') {
-  // This flag caused weird compilation errors when building on Linux.
-  debugConfig.push('enable_iterator_debugging=false')
   // Use prebuilt clang binaries.
   commonConfig.push('is_clang=true')
-  commonConfig.push('use_allocator="tcmalloc"')
+  // Use sysroot.
+  releaseConfig.push('use_sysroot=true')
   // Link with libc++ statically.
-  commonConfig.push('use_custom_libcxx=true')
-  releaseConfig.push('libcpp_is_static=true')
+  releaseConfig.push('use_custom_libcxx=true')
+  releaseConfig.push('libcxx_is_shared=false')
+} else if (targetOs == 'mac') {
+  commonConfig.push('mac_sdk_min="10.12"')
 }
 
 gen('out/Debug', debugConfig)
