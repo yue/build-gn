@@ -2,13 +2,23 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-# Runs the Microsoft Message Compiler (mc.exe). This Python adapter is for the
-# GN build, which can only run Python and not native binaries.
+# Runs the Microsoft Message Compiler (mc.exe).
 #
 # Usage: message_compiler.py <environment_file> [<args to mc.exe>*]
 
+from __future__ import print_function
+
+import difflib
+import distutils.dir_util
+import filecmp
+import os
+import re
+import shutil
 import subprocess
 import sys
+import tempfile
+
+# PATCH(build-gn): Use old implementation to avoid relying on third_party.
 
 # Read the environment block from the file. This is stored in the format used
 # by CreateProcess. Drop last 2 NULs, one for list terminator, one for trailing
@@ -24,5 +34,5 @@ try:
                           stderr=subprocess.STDOUT,
                           shell=True)
 except subprocess.CalledProcessError as e:
-  print e.output
+  print(e.output)
   sys.exit(e.returncode)

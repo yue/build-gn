@@ -50,13 +50,13 @@ declare_args() {
   # true, you must also set libcxx_abi_unstable=false, which is bad for
   # performance and memory use.
   # PATCH(build-gn): We don't want to force static libc++.
-  libcxx_is_shared = true
+  libcxx_is_shared = false
 }
 
 # libc++abi needs to be exported from executables to be picked up by shared
 # libraries on certain instrumented builds.
 export_libcxxabi_from_executables =
-    use_custom_libcxx && !is_win && !is_component_build &&
+    use_custom_libcxx && !is_ios && !is_win && !is_component_build &&
     (is_asan || is_ubsan_vptr)
 
 # On Android, many shared libraries get loaded from the context of a JRE.  In

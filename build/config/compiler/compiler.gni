@@ -23,6 +23,12 @@ if (is_mac) {
 }
 
 declare_args() {
+  # Default to warnings as errors for default workflow, where we catch
+  # warnings with known toolchains. Allow overriding this e.g. for Chromium
+  # builds on Linux that could use a different version of the compiler.
+  # With GCC, warnings in no-Chromium code are always not treated as errors.
+  treat_warnings_as_errors = true
+
   # How many symbols to include in the build. This affects the performance of
   # the build since the symbols are large and dealing with them is slow.
   #   2 means regular build with symbols.
@@ -41,16 +47,6 @@ declare_args() {
   # Compile in such a way as to enable profiling of the generated code. For
   # example, don't omit the frame pointer and leave in symbols.
   enable_profiling = false
-
-  # Whether to use the binary binutils checked into third_party/binutils.
-  # These are not multi-arch so cannot be used except on x86 and x86-64 (the
-  # only two architectures that are currently checked in). Turn this off when
-  # you are using a custom toolchain and need to control -B in cflags.
-  linux_use_bundled_binutils =
-      linux_use_bundled_binutils_override && is_linux &&
-      (current_cpu == "x64" || current_cpu == "x86")
-  binutils_path = rebase_path("//third_party/binutils/Linux_x64/Release/bin",
-                              root_build_dir)
 
   # use_debug_fission: whether to use split DWARF debug info
   # files. This can reduce link time significantly, but is incompatible
@@ -73,7 +69,7 @@ declare_args() {
                             (target_os == "android" ||
                              (target_os == "chromeos" && is_chromeos_device)))
 
-  # Performs ThinLTO code generation on Goma.
+  # If true, use Goma for ThinLTO code generation where applicable.
   use_goma_thin_lto = false
 
   # Limit the number of jobs (threads/processes) the linker is allowed
@@ -100,12 +96,13 @@ declare_args() {
   # which doesn't use Crashpad, crbug.com/479283) builds it's useful to be able
   # to unwind at runtime.
   exclude_unwind_tables = is_official_build
+
+  # Where to redirect clang crash diagnoses
+  clang_diagnostic_dir =
+      rebase_path("//tools/clang/crashreports", root_build_dir)
 }
 
 assert(!is_cfi || use_thin_lto, "CFI requires ThinLTO")
-assert(
-    !use_goma_thin_lto || (use_goma && use_thin_lto),
-    "use_goma_thin_lto requires both use_goma and use_thin_lto to be enabled")
 
 # If true, optimize for size. Does not affect windows builds.
 # Linux & Mac favor speed over size.
@@ -123,7 +120,13 @@ declare_args() {
 
 # Determine whether to enable or disable frame pointers, based on the platform
 # and build arguments.
-if (is_mac || is_ios || is_linux) {
+if (is_chromeos) {
+  # ChromeOS generally prefers frame pointers, to support CWP.
+  # However, Clang does not currently generate usable frame pointers in ARM
+  # 32-bit builds (https://bugs.llvm.org/show_bug.cgi?id=18505) so disable them
+  # there to avoid the unnecessary overhead.
+  enable_frame_pointers = current_cpu != "arm"
+} else if (is_apple || is_linux || is_chromeos) {
   enable_frame_pointers = true
 } else if (is_win) {
   # 64-bit Windows ABI doesn't support frame pointers.
@@ -132,12 +135,6 @@ if (is_mac || is_ios || is_linux) {
   } else {
     enable_frame_pointers = true
   }
-} else if (is_chromeos) {
-  # ChromeOS generally prefers frame pointers, to support CWP.
-  # However, Clang does not currently generate usable frame pointers in ARM
-  # 32-bit builds (https://bugs.llvm.org/show_bug.cgi?id=18505) so disable them
-  # there to avoid the unnecessary overhead.
-  enable_frame_pointers = current_cpu != "arm"
 } else if (is_android) {
   enable_frame_pointers =
       enable_profiling ||
@@ -181,6 +178,11 @@ assert(!can_unwind_with_frame_pointers || enable_frame_pointers)
 can_unwind_with_cfi_table = is_android && !is_component_build &&
                             !enable_frame_pointers && current_cpu == "arm"
 
+# Whether or not cfi table should be enabled on arm.
+# TODO(crbug.com/1090409): Replace can_unwind_with_cfi_table with this once
+# sampling profiler is enabled on android.
+enable_arm_cfi_table = is_android && !is_component_build && current_cpu == "arm"
+
 declare_args() {
   # Set to true to use lld, the LLVM linker.
   use_lld = is_clang && (!is_ios && !is_mac)
@@ -192,8 +194,8 @@ declare_args() {
       !use_lld && !(is_chromecast && is_linux &&
                     (current_cpu == "arm" || current_cpu == "mipsel")) &&
       ((is_linux && (current_cpu == "x64" || current_cpu == "x86" ||
-                     current_cpu == "arm" || current_cpu == "arm64" ||
-                     current_cpu == "mipsel" || current_cpu == "mips64el")) ||
+                                      current_cpu == "arm" || current_cpu == "arm64" ||
+                                      current_cpu == "mipsel" || current_cpu == "mips64el")) ||
        (is_android && (current_cpu == "x86" || current_cpu == "x64" ||
                        current_cpu == "arm" || current_cpu == "arm64")))
 }
@@ -208,7 +210,7 @@ declare_args() {
 # deterministic builds to reduce compile times, so this is less relevant for
 # official builders.
 strip_absolute_paths_from_debug_symbols_default =
-    is_android || is_fuchsia || is_nacl || (is_win && use_lld) || is_linux ||
+    is_android || is_fuchsia || is_nacl || (is_win && use_lld) || is_linux || is_chromeos ||
     (is_mac && !enable_dsyms) || ios_use_goma_rbe
 
 # If the platform uses stripped absolute paths by default, then we don't expose
@@ -245,7 +247,7 @@ if (symbol_level == -1) {
     # info or variable info, so we can leave that out to speed up the build.
     # Sanitizers also require symbols for filename suppressions to work.
     symbol_level = 1
-  } else if ((!is_nacl && !is_linux && !is_fuchsia && current_os != "aix") ||
+  } else if ((!is_nacl && !is_linux && !is_chromeos && !is_fuchsia && current_os != "aix") ||
              is_debug || is_official_build || is_chromecast) {
     # Linux builds slower by having symbols as part of the target binary,
     # whereas Mac and Windows have them separate, so in Release Linux, default

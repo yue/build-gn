@@ -35,11 +35,10 @@ config("compiler") {
   ]
 
   cflags_cc = [
-    "-std=gnu++11",
     "-fno-rtti",
     "-fno-exceptions",
     "-Wno-narrowing",
-    "-Wnon-virtual-dtor",
+    "-Wno-non-virtual-dtor",
   ]
 
   ldflags = [

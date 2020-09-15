@@ -12,6 +12,19 @@ enable_java_templates = false
 # Some non-Chromium builds don't use Chromium's third_party/binutils.
 linux_use_bundled_binutils_override = false
 
+# Tracing support requires //third_party/perfetto, which is not available in
+# libchrome (CrOS's version of //base). This flag can disable tracing support
+# altogether, in which case all tracing instrumentation in //base becomes a
+# no-op.
+# TODO(crbug/1065905): Add dependency on perfetto to support typed events.
+enable_base_tracing = false
+
+# Switches the TRACE_EVENT instrumentation from base's TraceLog implementation
+# to //third_party/perfetto's client library. Not implemented yet, currently a
+# no-op to set up trybot infrastructure.
+# TODO(crbug/1006769): Switch to perfetto's client library.
+use_perfetto_client_library = false
+
 # Android 32-bit non-component, non-clang builds cannot have symbol_level=2
 # due to 4GiB file size limit, see https://crbug.com/648948.
 # Set this flag to true to skip the assertion.
