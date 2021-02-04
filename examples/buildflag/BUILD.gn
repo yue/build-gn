@@ -1,0 +1,18 @@
+import("//build/buildflag_header.gni")
+
+buildflag_header("some_buildflags") {
+  header = "some/buildflags.h"
+  flags = [ "SOME_FLAG=1" ]
+}
+
+executable("test") {
+  sources = [
+    "main.cc",
+  ]
+
+  deps = [
+    ":some_buildflags",
+    "//build:branding_buildflags",
+    "//build:chromeos_buildflags",
+  ]
+}

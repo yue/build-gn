@@ -1,0 +1,10 @@
+import("//testing/test.gni")
+
+test("test") {
+  sources = [
+    "run_all_unittests.cc",
+    "some_unittest.cc",
+  ]
+
+  deps = [ "//testing/gtest" ]
+}
