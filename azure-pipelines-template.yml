@@ -25,11 +25,11 @@ steps:
     echo "##vso[task.setvariable variable=Name;isOutput=true]$TAG"
   displayName: Get Tag Name
   name: Tag
-  condition: startsWith(variables['Build.SourceBranch'], 'refs/tags/')
+  condition: and(succeeded(), startsWith(variables['Build.SourceBranch'], 'refs/tags/'))
 
 - task: GithubRelease@0
   displayName: Create GitHub Release
-  condition: startsWith(variables['Tag.Name'], 'v')
+  condition: and(succeeded(), startsWith(variables['Tag.Name'], 'v'))
   inputs:
     gitHubConnection: GitHub Yue
     repositoryName: yue/build-gn

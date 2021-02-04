@@ -130,9 +130,6 @@ declare_args() {
   # separate flags.
   is_official_build = false
 
-  # Whether we're a traditional desktop unix.
-  is_desktop_linux = current_os == "linux"
-
   # Set to true when compiling with the Clang compiler.
   # PATCH(build-gn): Don't use clang by default on Linux and Windows.
   is_clang = current_os == "mac"
@@ -161,6 +158,17 @@ declare_args() {
   # For more information see
   # https://chromium.googlesource.com/chromium/src/+/master/docs/component_build.md
   is_component_build = is_debug && current_os != "ios"
+}
+
+declare_args() {
+  # Regression Test Selection (RTS).
+  # https://chromium.googlesource.com/chromium/src/+/master/docs/testing/regression-test-selection.md
+  #
+  # Exclude unittest/browsertest files listed in this file.
+  #
+  # Entries should be newline separated.
+  # Each entry much be an source-absolute path starting with //.
+  rts_exclude_file = ""
 }
 
 assert(!(is_debug && is_official_build), "Can't do official debug builds")
@@ -275,8 +283,8 @@ if (custom_toolchain != "") {
 # - is_mac is set only for desktop Mac. It is not set on iOS.
 # - is_posix is true for mac and any Unix-like system (basically everything
 #   except Fuchsia and Windows).
-# - is_linux is true for desktop Linux and ChromeOS, but not Android (which is
-#   generally too different despite being based on the Linux kernel).
+# - is_linux is true for desktop Linux, but not for ChromeOS nor Android (which
+#   is generally too different despite being based on the Linux kernel).
 #
 # Do not add more is_* variants here for random lesser-used Unix systems like
 # aix or one of the BSDs. If you need to check these, just check the
@@ -286,133 +294,13 @@ is_android = current_os == "android"
 is_chromeos = current_os == "chromeos"
 is_fuchsia = current_os == "fuchsia"
 is_ios = current_os == "ios"
-is_linux = current_os == "chromeos" || current_os == "linux"
+is_linux = current_os == "linux"
 is_mac = current_os == "mac"
 is_nacl = current_os == "nacl"
 is_win = current_os == "win" || current_os == "winuwp"
 
 is_apple = is_ios || is_mac
 is_posix = !is_win && !is_fuchsia
-
-# =============================================================================
-# SOURCES FILTERS
-# =============================================================================
-#
-# These patterns filter out platform-specific files when assigning to the
-# sources variable. The magic variable |sources_assignment_filter| is applied
-# to each assignment or appending to the sources variable and matches are
-# automatically removed.
-#
-# Note that the patterns are NOT regular expressions. Only "*" and "\b" (path
-# boundary = end of string or slash) are supported, and the entire string
-# must match the pattern (so you need "*.cc" to match all .cc files, for
-# example).
-
-# DO NOT ADD MORE PATTERNS TO THIS LIST, see set_sources_assignment_filter call
-# below.
-sources_assignment_filter = []
-if (!is_posix) {
-  sources_assignment_filter += [
-    "*_posix.h",
-    "*_posix.cc",
-    "*_posix_unittest.h",
-    "*_posix_unittest.cc",
-    "*\bposix/*",
-  ]
-}
-
-if (!is_win) {
-  sources_assignment_filter += [
-    "*_win.cc",
-    "*_win.h",
-    "*_win_unittest.cc",
-    "*\bwin/*",
-    "*.def",
-    "*.rc",
-  ]
-}
-if (!is_mac) {
-  sources_assignment_filter += [
-    "*_mac.h",
-    "*_mac.cc",
-    "*_mac.mm",
-    "*_mac_unittest.h",
-    "*_mac_unittest.cc",
-    "*_mac_unittest.mm",
-    "*\bmac/*",
-    "*_cocoa.h",
-    "*_cocoa.cc",
-    "*_cocoa.mm",
-    "*_cocoa_unittest.h",
-    "*_cocoa_unittest.cc",
-    "*_cocoa_unittest.mm",
-    "*\bcocoa/*",
-  ]
-}
-if (!is_ios) {
-  sources_assignment_filter += [
-    "*_ios.h",
-    "*_ios.cc",
-    "*_ios.mm",
-    "*_ios_unittest.h",
-    "*_ios_unittest.cc",
-    "*_ios_unittest.mm",
-    "*\bios/*",
-  ]
-}
-if (!is_mac && !is_ios) {
-  sources_assignment_filter += [ "*.mm" ]
-}
-if (!is_linux && !is_chromeos) {
-  sources_assignment_filter += [
-    "*_linux.h",
-    "*_linux.cc",
-    "*_linux_unittest.h",
-    "*_linux_unittest.cc",
-    "*\blinux/*",
-    # PATCH(build-gn): Support GTK.
-    "*_gtk.h",
-    "*_gtk.cc",
-    "*_gtk_unittest.h",
-    "*_gtk_unittest.cc",
-    "*\bgtk/*",
-  ]
-}
-if (!is_android) {
-  sources_assignment_filter += [
-    "*_android.h",
-    "*_android.cc",
-    "*_android_unittest.h",
-    "*_android_unittest.cc",
-    "*\bandroid/*",
-  ]
-}
-if (!is_chromeos) {
-  sources_assignment_filter += [
-    "*_chromeos.h",
-    "*_chromeos.cc",
-    "*_chromeos_unittest.h",
-    "*_chromeos_unittest.cc",
-    "*\bchromeos/*",
-  ]
-}
-
-# DO NOT ADD MORE PATTERNS TO THIS LIST, see set_sources_assignment_filter call
-# below.
-
-# Actually save this list.
-#
-# These patterns are executed for every file in the source tree of every run.
-# Therefore, adding more patterns slows down the build for everybody. We should
-# only add automatic patterns for configurations affecting hundreds of files
-# across many projects in the tree.
-#
-# Therefore, we only add rules to this list corresponding to platforms on the
-# Chromium waterfall.  This is not for non-officially-supported platforms
-# (FreeBSD, etc.) toolkits, (X11, GTK, etc.), or features. For these cases,
-# write a conditional in the target to remove the file(s) from the list when
-# your platform/toolkit/feature doesn't apply.
-set_sources_assignment_filter(sources_assignment_filter)
 
 # =============================================================================
 # TARGET DEFAULTS
@@ -436,6 +324,7 @@ default_compiler_configs = [
   "//build/config:feature_flags",
   "//build/config/compiler:afdo",
   "//build/config/compiler:afdo_optimize_size",
+  "//build/config/compiler:cet_shadow_stack",
   "//build/config/compiler:compiler",
   "//build/config/compiler:compiler_arm_fpu",
   "//build/config/compiler:compiler_arm_thumb",
@@ -449,6 +338,7 @@ default_compiler_configs = [
   "//build/config/compiler:no_rtti",
   "//build/config/compiler:runtime_library",
   "//build/config/compiler:thin_archive",
+  "//build/config/compiler:thinlto_optimize_default",
   "//build/config/compiler:default_init_stack_vars",
   "//build/config/compiler/pgo:default_pgo_flags",
   "//build/config/coverage:default_coverage",
@@ -457,6 +347,7 @@ default_compiler_configs = [
 
 if (is_win) {
   default_compiler_configs += [
+    "//build/config/win:default_cfg_compiler",
     "//build/config/win:default_crt",
     "//build/config/win:lean_and_mean",
     "//build/config/win:nominmax",
@@ -479,11 +370,6 @@ if (is_fuchsia) {
 if (is_android) {
   default_compiler_configs +=
       [ "//build/config/android:default_orderfile_instrumentation" ]
-}
-
-if (is_win) {
-  default_compiler_configs +=
-      [ "//build/config/win:default_cygprofile_instrumentation" ]
 }
 
 if (is_clang && !is_nacl) {
@@ -571,6 +457,18 @@ set_defaults("loadable_module") {
   }
 }
 
+# A helper for forwarding testonly and visibility.
+# Forwarding "*" does not include variables from outer scopes (to avoid copying
+# all globals into each template invocation), so it will not pick up
+# file-scoped or outer-template-scoped variables. Normally this behavior is
+# desired, but "visibility" and "testonly" are commonly defined in outer scopes.
+# Explicitly forwarding them in forward_variables_from() works around this
+# nuance. See //build/docs/writing_gn_templates.md#using-forward_variables_from
+TESTONLY_AND_VISIBILITY = [
+  "testonly",
+  "visibility",
+]
+
 # Sets default dependencies for executable and shared_library targets.
 #
 # Variables
@@ -585,9 +483,13 @@ foreach(_target_type,
           "shared_library",
         ]) {
   template(_target_type) {
+    # Alias "target_name" because it is clobbered by forward_variables_from().
     _target_name = target_name
     target(_target_type, _target_name) {
-      forward_variables_from(invoker, "*", [ "no_default_deps" ])
+      forward_variables_from(invoker,
+                             "*",
+                             TESTONLY_AND_VISIBILITY + [ "no_default_deps" ])
+      forward_variables_from(invoker, TESTONLY_AND_VISIBILITY)
       if (!defined(deps)) {
         deps = []
       }
@@ -667,15 +569,8 @@ template("component") {
     _component_mode = "static_library"
   }
   target(_component_mode, target_name) {
-    # Explicitly forward visibility, implicitly forward everything else.
-    # Forwarding "*" doesn't recurse into nested scopes (to avoid copying all
-    # globals into each template invocation), so won't pick up file-scoped
-    # variables. Normally this isn't too bad, but visibility is commonly
-    # defined at the file scope. Explicitly forwarding visibility and then
-    # excluding it from the "*" set works around this problem.
-    # See http://crbug.com/594610
-    forward_variables_from(invoker, [ "visibility" ])
-    forward_variables_from(invoker, "*", [ "visibility" ])
+    forward_variables_from(invoker, TESTONLY_AND_VISIBILITY)
+    forward_variables_from(invoker, "*", TESTONLY_AND_VISIBILITY)
   }
 }
 
@@ -688,5 +583,34 @@ set_defaults("component") {
     }
   } else {
     configs = default_compiler_configs
+  }
+}
+
+# ==============================================================================
+# Regression Test Selection (RTS)
+# https://chromium.googlesource.com/chromium/src/+/master/docs/testing/regression-test-selection.md
+# ==============================================================================
+if (rts_exclude_file != "") {
+  rts_exclusions = read_file(rts_exclude_file, "list lines")
+
+  # Many tests are included in source_sets
+  template("source_set") {
+    _target_name = target_name
+    target("source_set", _target_name) {
+      forward_variables_from(invoker, "*", TESTONLY_AND_VISIBILITY)
+      forward_variables_from(invoker, TESTONLY_AND_VISIBILITY)
+
+      if (defined(sources) && sources != []) {
+        # Normalize paths
+        abs_paths = get_path_info(sources, "abspath")
+
+        # Filter
+        filtered_sources = filter_exclude(abs_paths, rts_exclusions)
+
+        # Do the replacement
+        sources = []
+        sources = filtered_sources
+      }
+    }
   }
 }

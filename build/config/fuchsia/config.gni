@@ -2,9 +2,10 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-assert(current_os == "fuchsia")
+assert(is_fuchsia)
 
-declare_args() {
-  # Path to Fuchsia SDK.
-  fuchsia_sdk = "//third_party/fuchsia-sdk"
-}
+# Compute the AEMU path.
+aemu_root = "//third_party/aemu-${host_os}-${host_cpu}"
+
+# Compute the path to the arch-specific boot image directory.
+boot_image_root = "//third_party/fuchsia-sdk/images/${target_cpu}"

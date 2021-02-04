@@ -6,6 +6,12 @@ const fs = require('fs')
 const path = require('path')
 const {execSync, spawnSync} = require('child_process')
 
+// Quit when promise is rejected.
+process.on('unhandledRejection', (error) => {
+  console.error(error)
+  process.exit(1)
+})
+
 // Switch to root dir.
 process.chdir(path.dirname(__dirname))
 

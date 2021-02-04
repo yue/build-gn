@@ -148,18 +148,15 @@ config("default_sanitizer_ldflags") {
   visibility = [
     ":default_sanitizer_flags",
     ":deps",
+
+    # https://crbug.com/360158.
+    "//tools/ipc_fuzzer/fuzzer:ipc_fuzzer",
   ]
 
   if (is_posix || is_fuchsia) {
     ldflags = []
     if (is_asan) {
       ldflags += [ "-fsanitize=address" ]
-      if (is_mac) {
-        # https://crbug.com/708707
-        ldflags += [ "-fno-sanitize-address-use-after-scope" ]
-      } else {
-        ldflags += [ "-fsanitize-address-use-after-scope" ]
-      }
     }
     if (is_hwasan) {
       ldflags += [ "-fsanitize=hwaddress" ]
@@ -274,34 +271,12 @@ config("asan_flags") {
   cflags = []
   if (is_asan) {
     cflags += [ "-fsanitize=address" ]
-    if (!is_mac) {
-      cflags += [ "-fsanitize-address-use-after-scope" ]
-    } else {
-      # https://crbug.com/708707
-      cflags += [ "-fno-sanitize-address-use-after-scope" ]
-    }
-    if (!asan_globals) {
-      cflags += [
-        "-mllvm",
-        "-asan-globals=0",
-      ]
-    }
-    if (asan_use_blacklist) {
-      if (is_win) {
-        if (!defined(asan_win_blacklist_path)) {
-          asan_win_blacklist_path =
-              rebase_path("//tools/memory/asan/blacklist_win.txt",
-                          root_build_dir)
-        }
-        cflags += [ "-fsanitize-blacklist=$asan_win_blacklist_path" ]
-      } else {
-        # TODO(rnk): Remove this as discussed in http://crbug.com/427202.
-        if (!defined(asan_blacklist_path)) {
-          asan_blacklist_path =
-              rebase_path("//tools/memory/asan/blacklist.txt", root_build_dir)
-        }
-        cflags += [ "-fsanitize-blacklist=$asan_blacklist_path" ]
+    if (is_win) {
+      if (!defined(asan_win_blacklist_path)) {
+        asan_win_blacklist_path =
+            rebase_path("//tools/memory/asan/blocklist_win.txt", root_build_dir)
       }
+      cflags += [ "-fsanitize-blacklist=$asan_win_blacklist_path" ]
     }
   }
 }
@@ -432,7 +407,8 @@ config("lsan_flags") {
 
 config("msan_flags") {
   if (is_msan) {
-    assert(is_linux || is_chromeos, "msan only supported on linux x86_64/ChromeOS")
+    assert(is_linux || is_chromeos,
+           "msan only supported on linux x86_64/ChromeOS")
     if (!defined(msan_blacklist_path)) {
       msan_blacklist_path =
           rebase_path("//tools/msan/blacklist.txt", root_build_dir)

@@ -2,6 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import("//build/config/chromeos/ui_mode.gni")
 import("//build/config/sanitizers/sanitizers.gni")
 
 declare_args() {
@@ -10,7 +11,7 @@ declare_args() {
   # standard library support.
   # Don't check in changes that set this to false for more platforms; doing so
   # is not supported.
-  # PATCH(build-gn): We don't want to force libc++ for Linux.
+  # PATCH(build-gn): We don't want to force libc++.
   use_custom_libcxx = false
 
   # Use libc++ instead of stdlibc++ when using the host_cpu toolchain, even if
@@ -49,8 +50,7 @@ declare_args() {
   # unsupported and can be broken by libc++ rolls. Note that if this is set to
   # true, you must also set libcxx_abi_unstable=false, which is bad for
   # performance and memory use.
-  # PATCH(build-gn): We don't want to force static libc++.
-  libcxx_is_shared = false
+  libcxx_is_shared = use_custom_libcxx && is_component_build
 }
 
 # libc++abi needs to be exported from executables to be picked up by shared

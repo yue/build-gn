@@ -144,7 +144,7 @@ def GetVisualStudioVersion():
   supported_versions = list(MSVS_VERSIONS.keys())
 
   # VS installed in depot_tools for Googlers
-  # PATCH(build-gn): Do not assume depot_tools by default.
+  # PATCH(build-gn): Do not use DEPOT_TOOLS_WIN_TOOLCHAIN by default.
   if bool(int(os.environ.get('DEPOT_TOOLS_WIN_TOOLCHAIN', '0'))):
     return supported_versions[0]
 
@@ -334,14 +334,13 @@ def FindVCComponentRoot(component):
   assert ('GYP_MSVS_OVERRIDE_PATH' in os.environ)
   vc_component_msvc_root = os.path.join(os.environ['GYP_MSVS_OVERRIDE_PATH'],
       'VC', component, 'MSVC')
-  vc_component_msvc_contents = os.listdir(vc_component_msvc_root)
+  vc_component_msvc_contents = glob.glob(
+      os.path.join(vc_component_msvc_root, '14.*'))
   # Select the most recent toolchain if there are several.
   _SortByHighestVersionNumberFirst(vc_component_msvc_contents)
   for directory in vc_component_msvc_contents:
-    if not os.path.isdir(os.path.join(vc_component_msvc_root, directory)):
-      continue
-    if re.match(r'14\.\d+\.\d+', directory):
-      return os.path.join(vc_component_msvc_root, directory)
+    if os.path.isdir(directory):
+      return directory
   raise Exception('Unable to find the VC %s directory.' % component)
 
 
@@ -480,7 +479,7 @@ def Update(force=False, no_download=False):
   if force == '--force' or os.path.exists(json_data_file):
     force = True
 
-  # PATCH(build-gn): Do not assume depot_tools by default.
+  # PATCH(build-gn): Do not use DEPOT_TOOLS_WIN_TOOLCHAIN by default.
   depot_tools_win_toolchain = \
       bool(int(os.environ.get('DEPOT_TOOLS_WIN_TOOLCHAIN', '0')))
   if (_HostIsWindows() or force) and depot_tools_win_toolchain:

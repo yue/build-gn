@@ -6,26 +6,29 @@
 
 const {argv, version, targetCpu, targetOs, execSync} = require('./common')
 
-const fs = require('fs')
 const os = require('os')
 const path = require('path')
 const extract = require('./libs/extract-zip')
+const fs = require('./libs/fs-extra')
 
-// Our work dir.
 const zipname = `gn_${version}_${targetOs}_${targetCpu}`
 const tmppath = path.join(os.tmpdir(), zipname)
+main()
 
-// Bulid and package.
-console.log('Zipping and unzipping GN...')
-execSync('node scripts/build.js out/Release')
-execSync('node scripts/create_dist.js')
-extract(`out/Release/${zipname}.zip`, {dir: path.join(tmppath, 'gn')}, runTests)
-
-function runTests(error) {
-  if (error) {
+async function main() {
+  console.log('Zipping and unzipping GN...')
+  execSync('node scripts/build.js out/Release')
+  execSync('node scripts/create_dist.js')
+  try {
+    await extract(`out/Release/${zipname}.zip`, {dir: path.join(tmppath, 'gn')})
+  } catch (error) {
     console.error(error)
     process.exit(1)
   }
+  runTests()
+}
+
+function runTests(error) {
   if (targetCpu !== 'x64' && targetOs !== 'win') {
     return
   }
@@ -37,6 +40,8 @@ function runTests(error) {
 function runEachTest(project, projectPath) {
   console.log(`Generating ninja bulid for project "${project}"...`)
   const outdir = path.resolve('out', 'Test')
+  fs.emptyDirSync(outdir)
+
   const gn = path.join(tmppath, 'gn', 'gn')
   execSync(`${gn} gen ${outdir}`, {cwd: projectPath})
 

@@ -13,6 +13,11 @@ import re
 import subprocess
 import sys
 
+if sys.version_info.major < 3:
+  basestring_compat = basestring
+else:
+  basestring_compat = str
+
 # src directory
 ROOT_SRC_DIR = os.path.dirname(
     os.path.dirname(
@@ -36,6 +41,7 @@ def SplitVersion(version):
   version = version.split('.')
   return itertools.islice(itertools.chain(version, itertools.repeat('0')), 0, 3)
 
+
 def FormatVersion(version):
   """Converts Xcode version to a format required for DTXcode in Info.plist
 
@@ -49,6 +55,7 @@ def FormatVersion(version):
   major, minor, patch = SplitVersion(version)
   return ('%2s%s%s' % (major, minor, patch)).replace(' ', '0')
 
+
 def FillXcodeVersion(settings, developer_dir):
   """Fills the Xcode version and build number into |settings|."""
   if developer_dir:
@@ -61,7 +68,8 @@ def FillXcodeVersion(settings, developer_dir):
     settings['xcode_build'] = version_plist['ProductBuildVersion']
     return
 
-  lines = subprocess.check_output(['xcodebuild', '-version']).splitlines()
+  lines = subprocess.check_output(['xcodebuild',
+                                   '-version']).decode('UTF-8').splitlines()
   settings['xcode_version'] = FormatVersion(lines[0].split()[-1])
   settings['xcode_version_int'] = int(settings['xcode_version'], 10)
   settings['xcode_build'] = lines[-1].split()[-1]
@@ -69,36 +77,28 @@ def FillXcodeVersion(settings, developer_dir):
 
 def FillMachineOSBuild(settings):
   """Fills OS build number into |settings|."""
-  machine_os_build = subprocess.check_output(['sw_vers', '-buildVersion'],
-                                             universal_newlines=True).strip()
+  machine_os_build = subprocess.check_output(['sw_vers', '-buildVersion'
+                                              ]).decode('UTF-8').strip()
   settings['machine_os_build'] = machine_os_build
-
-  # The reported build number is made up from the kernel major version number,
-  # a minor version represented as a letter, a build number, and an optional
-  # packaging version.
-  #
-  # For example, the macOS 10.15.3 GM build is 19D76.
-  # - 19 is the Darwin kernel that ships with 10.15.
-  # - D is minor version 4. 10.15.0 builds had minor version 1.
-  # - 76 is the build number. 75 other builds were stamped before GM came out.
-  #
-  # The macOS 10.15.4 beta 5 build is 19E258a. The trailing "a" means the same
-  # build output was packaged twice.
-  build_match = re.match(r'^(\d+)([A-Z])(\d+)([a-z]?)$', machine_os_build)
-  assert build_match, "Unexpected macOS build format: %r" % machine_os_build
-  settings['machine_os_build_major'] = int(build_match.group(1), 10)
 
 
 def FillSDKPathAndVersion(settings, platform, xcode_version):
   """Fills the SDK path and version for |platform| into |settings|."""
-  settings['sdk_path'] = subprocess.check_output([
-      'xcrun', '-sdk', platform, '--show-sdk-path']).strip()
-  settings['sdk_version'] = subprocess.check_output([
-      'xcrun', '-sdk', platform, '--show-sdk-version']).strip()
-  settings['sdk_platform_path'] = subprocess.check_output([
-      'xcrun', '-sdk', platform, '--show-sdk-platform-path']).strip()
+  settings['sdk_path'] = subprocess.check_output(
+      ['xcrun', '-sdk', platform, '--show-sdk-path']).decode('UTF-8').strip()
+  settings['sdk_version'] = subprocess.check_output(
+      ['xcrun', '-sdk', platform,
+       '--show-sdk-version']).decode('UTF-8').strip()
+  settings['sdk_platform_path'] = subprocess.check_output(
+      ['xcrun', '-sdk', platform,
+       '--show-sdk-platform-path']).decode('UTF-8').strip()
   settings['sdk_build'] = subprocess.check_output(
-      ['xcrun', '-sdk', platform, '--show-sdk-build-version']).strip()
+      ['xcrun', '-sdk', platform,
+       '--show-sdk-build-version']).decode('UTF-8').strip()
+  settings['toolchains_path'] = os.path.join(
+      subprocess.check_output(['xcode-select',
+                               '-print-path']).decode('UTF-8').strip(),
+      'Toolchains/XcodeDefault.xctoolchain')
 
 
 def CreateXcodeSymlinkAt(src, dst):
@@ -128,8 +128,15 @@ if __name__ == '__main__':
   parser = argparse.ArgumentParser()
   parser.add_argument("--developer_dir", dest="developer_dir", required=False)
   parser.add_argument("--get_sdk_info",
-                    action="store_true", dest="get_sdk_info", default=False,
-                    help="Returns SDK info in addition to xcode/machine info.")
+                      action="store_true",
+                      dest="get_sdk_info",
+                      default=False,
+                      help="Returns SDK info in addition to xcode info.")
+  parser.add_argument("--get_machine_info",
+                      action="store_true",
+                      dest="get_machine_info",
+                      default=False,
+                      help="Returns machine info in addition to xcode info.")
   parser.add_argument(
       "--create_symlink_at",
       action="store",
@@ -148,7 +155,8 @@ if __name__ == '__main__':
     sys.exit(1)
 
   settings = {}
-  FillMachineOSBuild(settings)
+  if args.get_machine_info:
+    FillMachineOSBuild(settings)
   FillXcodeVersion(settings, args.developer_dir)
   if args.get_sdk_info:
     FillSDKPathAndVersion(settings, unknownargs[0], settings['xcode_version'])
@@ -157,6 +165,6 @@ if __name__ == '__main__':
     value = settings[key]
     if args.create_symlink_at and '_path' in key:
       value = CreateXcodeSymlinkAt(value, args.create_symlink_at)
-    if isinstance(value, str):
+    if isinstance(value, basestring_compat):
       value = '"%s"' % value
     print('%s=%s' % (key, value))

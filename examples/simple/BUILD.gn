@@ -2,4 +2,9 @@ executable("test") {
   sources = [
     "main.cc",
   ]
+
+  deps = [
+    "//build:branding_buildflags",
+    "//build:chromeos_buildflags",
+  ]
 }

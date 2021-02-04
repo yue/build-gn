@@ -93,6 +93,7 @@ def main():
   parser.add_argument('--strip',
                       help='The strip binary to run',
                       metavar='PATH')
+  parser.add_argument('--dwp', help='The dwp binary to run', metavar='PATH')
   parser.add_argument('--sofile',
                       required=True,
                       help='Shared object file produced by linking command',
@@ -138,9 +139,11 @@ def main():
   if link_only or collect_inputs_only:
     open(args.output, 'w').close()
     open(args.tocfile, 'w').close()
+    if args.dwp:
+      open(args.sofile + '.dwp', 'w').close()
 
   # Instead of linking, records all inputs to a file. This is used by
-  # enable_resource_whitelist_generation in order to avoid needing to
+  # enable_resource_allowlist_generation in order to avoid needing to
   # link (which is slow) to build the resources whitelist.
   if collect_inputs_only:
     with open(args.sofile, 'w') as f:
@@ -158,6 +161,17 @@ def main():
   if result != 0 or link_only:
     return result
 
+  # If dwp is set, then package debug info for this SO.
+  dwp_proc = None
+  if args.dwp:
+    # Suppress output here because it doesn't seem to be useful. The most
+    # common error is a segfault, which will happen if files are missing.
+    with open(os.devnull, "w") as devnull:
+      dwp_proc = subprocess.Popen(wrapper_utils.CommandToRun(
+          [args.dwp, '-e', args.sofile, '-o', args.sofile + '.dwp']),
+                                  stdout=devnull,
+                                  stderr=subprocess.STDOUT)
+
   # Next, generate the contents of the TOC file.
   result, toc = CollectTOC(args)
   if result != 0:
@@ -171,6 +185,11 @@ def main():
   if args.strip:
     result = subprocess.call(wrapper_utils.CommandToRun(
         [args.strip, '-o', args.output, args.sofile]))
+
+  if dwp_proc:
+    dwp_result = dwp_proc.wait()
+    if dwp_result != 0:
+      return dwp_result
 
   return result
 

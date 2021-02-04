@@ -5,8 +5,10 @@
 import("//build/config/chrome_build.gni")
 import("//build/config/chromecast_build.gni")
 import("//build/config/chromeos/args.gni")
+import("//build/config/chromeos/ui_mode.gni")
 import("//build/config/compiler/pgo/pgo.gni")
 import("//build/config/sanitizers/sanitizers.gni")
+import("//build/toolchain/cc_wrapper.gni")
 import("//build/toolchain/goma.gni")
 import("//build/toolchain/toolchain.gni")
 import("//build_overrides/build.gni")
@@ -18,7 +20,7 @@ if (current_cpu == "arm" || current_cpu == "arm64") {
   import("//build/config/arm.gni")
 }
 
-if (is_mac) {
+if (is_apple) {
   import("//build/config/mac/symbols.gni")
 }
 
@@ -67,14 +69,11 @@ declare_args() {
   # Chrome's clang. crbug.com/1033839
   use_thin_lto = is_cfi || (is_official_build &&
                             (target_os == "android" ||
-                             (target_os == "chromeos" && is_chromeos_device)))
+                             ((is_chromeos_ash || is_chromeos_lacros) &&
+                              is_chromeos_device)))
 
   # If true, use Goma for ThinLTO code generation where applicable.
   use_goma_thin_lto = false
-
-  # Limit the number of jobs (threads/processes) the linker is allowed
-  # to use (for linkers that support this).
-  max_jobs_per_link = 8
 
   # Whether we're using a sample profile collected on an architecture different
   # than the one we're compiling for.
@@ -100,6 +99,13 @@ declare_args() {
   # Where to redirect clang crash diagnoses
   clang_diagnostic_dir =
       rebase_path("//tools/clang/crashreports", root_build_dir)
+
+  # Mark binaries as compatible with Shadow Stack of Control-flow Enforcement
+  # Technology (CET). If Windows version and hardware supports the feature and
+  # it's enabled by OS then additional validation of return address will be
+  # performed as mitigation against Return-oriented programming (ROP).
+  # https://chromium.googlesource.com/chromium/src/+/master/docs/design/sandbox.md#cet-shadow-stack
+  enable_cet_shadow_stack = target_cpu == "x64"
 }
 
 assert(!is_cfi || use_thin_lto, "CFI requires ThinLTO")
@@ -120,7 +126,9 @@ declare_args() {
 
 # Determine whether to enable or disable frame pointers, based on the platform
 # and build arguments.
-if (is_chromeos) {
+# TODO(crbug.com/1052397): Consider changing is_chromeos_ash to is_chromeos after
+# lacros-chrome switches to target_os="chromeos".
+if (is_chromeos_ash) {
   # ChromeOS generally prefers frame pointers, to support CWP.
   # However, Clang does not currently generate usable frame pointers in ARM
   # 32-bit builds (https://bugs.llvm.org/show_bug.cgi?id=18505) so disable them
@@ -185,19 +193,21 @@ enable_arm_cfi_table = is_android && !is_component_build && current_cpu == "arm"
 
 declare_args() {
   # Set to true to use lld, the LLVM linker.
-  use_lld = is_clang && (!is_ios && !is_mac)
+  # Not supported for macOS (see docs/mac_lld.md), and not functional at all for
+  # iOS. The default linker everywhere else.
+  use_lld = is_clang && !is_apple
 }
 
 declare_args() {
   # Whether to use the gold linker from binutils instead of lld or bfd.
-  use_gold =
-      !use_lld && !(is_chromecast && is_linux &&
-                    (current_cpu == "arm" || current_cpu == "mipsel")) &&
-      ((is_linux && (current_cpu == "x64" || current_cpu == "x86" ||
-                                      current_cpu == "arm" || current_cpu == "arm64" ||
-                                      current_cpu == "mipsel" || current_cpu == "mips64el")) ||
-       (is_android && (current_cpu == "x86" || current_cpu == "x64" ||
-                       current_cpu == "arm" || current_cpu == "arm64")))
+  use_gold = !use_lld && !(is_chromecast && is_linux &&
+                           (current_cpu == "arm" || current_cpu == "mipsel")) &&
+             (((is_linux || is_chromeos_lacros) &&
+               (current_cpu == "x64" || current_cpu == "x86" ||
+                current_cpu == "arm" || current_cpu == "arm64" ||
+                current_cpu == "mipsel" || current_cpu == "mips64el")) ||
+              (is_android && (current_cpu == "x86" || current_cpu == "x64" ||
+                              current_cpu == "arm" || current_cpu == "arm64")))
 }
 
 # Use relative paths for debug info. This is important to make the build
@@ -210,8 +220,8 @@ declare_args() {
 # deterministic builds to reduce compile times, so this is less relevant for
 # official builders.
 strip_absolute_paths_from_debug_symbols_default =
-    is_android || is_fuchsia || is_nacl || (is_win && use_lld) || is_linux || is_chromeos ||
-    (is_mac && !enable_dsyms) || ios_use_goma_rbe
+    is_android || is_fuchsia || is_nacl || (is_win && use_lld) || is_linux ||
+    is_chromeos || (is_apple && !enable_dsyms)
 
 # If the platform uses stripped absolute paths by default, then we don't expose
 # it as a configuration option. If this is causing problems, please file a bug.
@@ -223,10 +233,19 @@ if (strip_absolute_paths_from_debug_symbols_default) {
   }
 }
 
+# If it wasn't manually set, then default use_debug_fission to false.
+assert(
+    use_debug_fission == "default" || use_debug_fission || !use_debug_fission,
+    "Invalid use_debug_fission.")
+if (use_debug_fission == "default") {
+  use_debug_fission = is_debug && !is_android && !is_fuchsia && !is_apple &&
+                      !is_win && (use_gold || use_lld) && cc_wrapper == ""
+}
+
 # If it wasn't manually set, set to an appropriate default.
 assert(symbol_level >= -1 && symbol_level <= 2, "Invalid symbol_level")
 if (symbol_level == -1) {
-  if (is_android && !is_component_build) {
+  if (is_android && !is_component_build && !use_debug_fission) {
     # Reduce symbol level when it will cause invalid elf files to be created
     # (due to file size). https://crbug.com/648948.
     symbol_level = 1
@@ -247,8 +266,9 @@ if (symbol_level == -1) {
     # info or variable info, so we can leave that out to speed up the build.
     # Sanitizers also require symbols for filename suppressions to work.
     symbol_level = 1
-  } else if ((!is_nacl && !is_linux && !is_chromeos && !is_fuchsia && current_os != "aix") ||
-             is_debug || is_official_build || is_chromecast) {
+  } else if ((!is_nacl && !is_linux && !is_chromeos && !is_fuchsia &&
+              current_os != "aix") || is_debug || is_official_build ||
+             is_chromecast) {
     # Linux builds slower by having symbols as part of the target binary,
     # whereas Mac and Windows have them separate, so in Release Linux, default
     # them off, but keep them on for Official builds and Chromecast builds.
@@ -257,6 +277,9 @@ if (symbol_level == -1) {
     symbol_level = 0
   }
 }
+
+# Split dwarf works only for symbol_level == 2.
+use_debug_fission = use_debug_fission && symbol_level == 2
 
 # Non-component debug builds with symbol_level = 2 are an undesirable (very slow
 # build times) and unsupported (some test binaries will fail with > 4 GB PDBs)
@@ -273,9 +296,10 @@ if (forbid_non_component_debug_builds) {
 # Assert that the configuration isn't going to hit https://crbug.com/648948.
 # An exception is made when target_os == "chromeos" as we only use the Android
 # toolchain there to build relatively small binaries.
-assert(ignore_elf32_limitations || !is_android || target_os == "chromeos" ||
-           is_component_build || symbol_level < 2,
-       "Android 32-bit non-component builds cannot have symbol_level=2 " +
-           "due to 4GiB file size limit, see https://crbug.com/648948. " +
-           "If you really want to try this out, " +
-           "set ignore_elf32_limitations=true.")
+assert(
+    ignore_elf32_limitations || !is_android || target_os == "chromeos" ||
+        is_component_build || symbol_level < 2 || use_debug_fission,
+    "Android 32-bit non-component builds without DWARF Fission cannot " +
+        "have symbol_level=2 due to 4GiB file size limit, see " +
+        "https://crbug.com/648948. " + "If you really want to try this out, " +
+        "set ignore_elf32_limitations=true.")

@@ -11,8 +11,8 @@
 //  Operating System family:
 //    OS_APPLE: IOS or MAC
 //    OS_BSD: FREEBSD or NETBSD or OPENBSD
-//    OS_POSIX: AIX or ANDROID or ASMJS or FREEBSD or IOS or LINUX or MAC or
-//              NACL or NETBSD or OPENBSD or QNX or SOLARIS
+//    OS_POSIX: AIX or ANDROID or ASMJS or CHROMEOS or FREEBSD or IOS or LINUX
+//              or MAC or NACL or NETBSD or OPENBSD or QNX or SOLARIS
 //
 //  /!\ Note: OS_CHROMEOS is set by the build system, not this file
 //
@@ -59,10 +59,15 @@
 #define OS_IOS 1
 #else
 #define OS_MAC 1
+// PATCH(build-gn): Be backward compatible.
 #define OS_MACOSX 1
 #endif  // defined(TARGET_OS_IPHONE) && TARGET_OS_IPHONE
 #elif defined(__linux__)
+#if !defined(OS_CHROMEOS)
+// Do not define OS_LINUX on Chrome OS build.
+// The OS_CHROMEOS macro is defined in GN.
 #define OS_LINUX 1
+#endif  // !defined(OS_CHROMEOS)
 // Include a system header to pull in features.h for glibc/uclibc macros.
 #include <unistd.h>
 #if defined(__GLIBC__) && !defined(__UCLIBC__)
@@ -105,10 +110,11 @@
 
 // For access to standard POSIXish features, use OS_POSIX instead of a
 // more specific macro.
-#if defined(OS_AIX) || defined(OS_ANDROID) || defined(OS_ASMJS) || \
-    defined(OS_FREEBSD) || defined(OS_IOS) || defined(OS_LINUX) || \
-    defined(OS_MAC) || defined(OS_NACL) || defined(OS_NETBSD) ||   \
-    defined(OS_OPENBSD) || defined(OS_QNX) || defined(OS_SOLARIS)
+#if defined(OS_AIX) || defined(OS_ANDROID) || defined(OS_ASMJS) ||  \
+    defined(OS_FREEBSD) || defined(OS_IOS) || defined(OS_LINUX) ||  \
+    defined(OS_CHROMEOS) || defined(OS_MAC) || defined(OS_NACL) ||  \
+    defined(OS_NETBSD) || defined(OS_OPENBSD) || defined(OS_QNX) || \
+    defined(OS_SOLARIS)
 #define OS_POSIX 1
 #endif
 
