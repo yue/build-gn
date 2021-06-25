@@ -44,6 +44,9 @@ declare_args() {
   # Don't set this on any bots.
   # PATCH(build-gn): Use the system xcode.
   mac_allow_system_xcode_for_official_builds_for_testing = true
+
+  # PATCH(build-gn): Required for XCode 12.5, can be removed after upgraded.
+  xcode_version_int = 0
 }
 
 # Check that the version of macOS SDK used is the one requested when building
@@ -91,6 +94,8 @@ sdk_info_args += [ mac_sdk_name ]
 _mac_sdk_result = exec_script(script_name, sdk_info_args, "scope")
 xcode_version = _mac_sdk_result.xcode_version
 xcode_build = _mac_sdk_result.xcode_build
+# PATCH(build-gn): Needed for Xcode 12.5. Can be removed after upgraded.
+xcode_version_int = _mac_sdk_result.xcode_version_int
 if (mac_sdk_path == "" && use_system_xcode && use_goma) {
   mac_sdk_path = _mac_sdk_result.sdk_path
 }

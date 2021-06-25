@@ -34,6 +34,8 @@ if (current_cpu == "x64") {
 }
 if (is_mac) {
   import("//build/config/mac/symbols.gni")
+  # PATCH(build-gn): Needed for Xcode 12.5. Can be removed after upgraded.
+  import("//build/config/mac/mac_sdk.gni")
 }
 if (is_ios) {
   import("//build/config/ios/ios_sdk.gni")
@@ -1557,6 +1559,13 @@ config("default_warnings") {
       # this as well. http://crbug.com/316352
       "-Wno-unneeded-internal-declaration",
     ]
+
+    # PATCH(build-gn): Needed for Xcode 12.5. Can be removed after upgraded.
+    if (use_xcode_clang && xcode_version_int >= 1250) {
+      cflags += [
+        "-Wno-deprecated-copy",
+      ]
+    }
 
     # use_xcode_clang only refers to the iOS toolchain, host binaries use
     # chromium's clang always.
