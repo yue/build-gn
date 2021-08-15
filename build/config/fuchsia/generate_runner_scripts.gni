@@ -83,17 +83,22 @@ template("fuchsia_package_runner") {
       data = [
         _runner_script,
         "//.vpython",
-        "//testing/test_env.py",
       ]
+      data_deps = [ "//testing:test_scripts_shared" ]
     } else {
       executable = rebase_path(_runner_script)
       executable_args = []
       data = []
+      data_deps = []
+    }
+
+    if (defined(invoker.data)) {
+      data += invoker.data
     }
 
     wrapper_script = generated_run_pkg_script_path
 
-    data_deps = [
+    data_deps += [
       invoker.package,
 
       # Runner scripts require access to "ids.txt" for symbolization, and to
@@ -137,7 +142,12 @@ template("fuchsia_package_runner") {
       "//third_party/fuchsia-sdk/sdk/tools/${test_host_cpu}/fvm",
       "//third_party/fuchsia-sdk/sdk/tools/${test_host_cpu}/merkleroot",
       "//third_party/fuchsia-sdk/sdk/tools/${test_host_cpu}/pm",
+
+      # TODO(crbug.com/1162314) Remove "symbolize" when transition to
+      # "symbolizer" is complete.
       "//third_party/fuchsia-sdk/sdk/tools/${test_host_cpu}/symbolize",
+
+      "//third_party/fuchsia-sdk/sdk/tools/${test_host_cpu}/symbolizer",
       "//third_party/fuchsia-sdk/sdk/tools/${test_host_cpu}/zbi",
     ]
 
@@ -146,13 +156,10 @@ template("fuchsia_package_runner") {
         "${boot_image_root}/qemu/qemu-kernel.kernel",
         "${boot_image_root}/qemu/storage-full.blk",
         "${boot_image_root}/qemu/zircon-a.zbi",
+        "//third_party/fuchsia-sdk/sdk/tools/${test_host_cpu}/fvdl",
         "//third_party/qemu-${host_os}-${test_host_cpu}/",
+        "${aemu_root}/",
       ]
-
-      # Include AEMU for x64 emulator hosts.
-      if (test_host_cpu == "x64") {
-        data += [ "${aemu_root}/" ]
-      }
     }
 
     foreach(fuchsia_additional_boot_image, fuchsia_additional_boot_images) {
@@ -194,6 +201,11 @@ template("fuchsia_package_runner") {
       _pkg_shortname,
     ]
 
+    if (defined(invoker.use_run_test_component) &&
+        invoker.use_run_test_component) {
+      executable_args += [ "--use-run-test-component" ]
+    }
+
     if (defined(invoker.use_test_server) && invoker.use_test_server) {
       executable_args += [ "--enable-test-server" ]
     }
@@ -207,9 +219,9 @@ template("fuchsia_package_runner") {
   }
 
   # Produces a script which installs a package and its dependencies into the
-  # Amber repository of a pre-existing Fuchsia build directory.
+  # package repository of a pre-existing Fuchsia build directory.
   generate_wrapper(_generate_installer_target) {
-    executable = rebase_path("//build/fuchsia/deploy_to_amber_repo.py")
+    executable = rebase_path("//build/fuchsia/deploy_to_pkg_repo.py")
     wrapper_script = generated_install_pkg_script_path
 
     data_deps = [ invoker.package ]

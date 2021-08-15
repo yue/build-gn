@@ -163,9 +163,6 @@ config("ios_dynamic_flags") {
   ldflags = [
     # Always load Objective-C categories and class.
     "-Wl,-ObjC",
-
-    # Uses version 2 of Objective-C ABI.
-    "-Wl,-objc_abi_version,2",
   ]
 
   # The path to the Swift compatibility libraries (required to run code built
@@ -196,8 +193,21 @@ config("ios_shared_library_flags") {
   ]
 }
 
+config("disable_implicit_retain_self_warning") {
+  cflags_objc = [ "-Wno-implicit-retain-self" ]
+  cflags_objcc = cflags_objc
+}
+
 config("xctest_config") {
-  framework_dirs = [ "$ios_sdk_platform_path/Developer/Library/Frameworks" ]
+  # Use -iframework for XCTest.framework so that the compiler will treat it as a
+  # system framework and ignore warnings in XCTest framework headers.
+  common_flags = [
+    "-iframework",
+    rebase_path("$ios_sdk_platform_path/Developer/Library/Frameworks",
+                root_build_dir),
+  ]
+  cflags = common_flags
+  ldflags = common_flags
 
   frameworks = [
     "Foundation.framework",
@@ -217,7 +227,7 @@ _xctrunner_path =
 # are below $root_build_dir, it is not possible to list them as a target input
 # without gn complaining (as it can't find a target creating those files).
 #
-# The symlinks are created by //build/config/mac/sdk_info.py script invoked
+# The symlinks are created by //build/config/apple/sdk_info.py script invoked
 # via exec_script() from //build/config/{ios/ios_sdk.gni,mac/mac_sdk.gni}.
 # As the invocation is done by exec_script, there is no target that can list
 # those files as output.

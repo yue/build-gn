@@ -1,11 +1,13 @@
+# Generated from 'DEPS'
 # PATCH(build-gn): Customized.
 build_with_chromium = false
 checkout_android = false
 checkout_android_native_support = false
-checkout_libaom = false
+checkout_libaom = true
 checkout_nacl = false
-checkout_pgo_profiles = false
+checkout_pgo_profiles = true
 checkout_oculus_sdk = false
 checkout_openxr = false
 checkout_google_benchmark = false
 mac_xcode_version = "default"
+generate_location_tags = false

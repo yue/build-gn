@@ -9,11 +9,9 @@ for compiling.
 
 """
 
-from __future__ import print_function
-
 import argparse
-import cStringIO
 import os
+import io
 
 # Files that appear in sources lists but have no effect and are
 # ignored by the build system. We warn for unexpected files in the
@@ -42,24 +40,24 @@ def write_jumbo_files(inputs, outputs, written_input_set, written_output_set):
     else:
       current_jumbo_file = None
 
-    out = cStringIO.StringIO()
-    out.write("/* This is a Jumbo file. Don't edit. */\n\n")
-    out.write("/* Generated with merge_for_jumbo.py. */\n\n")
+    out = io.StringIO()
+    out.write(u"/* This is a Jumbo file. Don't edit. */\n\n")
+    out.write(u"/* Generated with merge_for_jumbo.py. */\n\n")
     input_limit = (output_index + 1) * input_count / output_count
     while written_inputs < input_limit:
       filename = inputs[written_inputs]
       written_inputs += 1
       if os.environ.get('JUMBO_INCLUDE_FILE_CONTENTS') == 'true':
-        with open(filename, 'r') as f:
-          out.write(f.read() + '\n')
+        with io.open(filename, mode="r", encoding="utf-8") as f:
+          out.write(f.read() + u"\n")
       else:
-        out.write("#include \"%s\"\n" % filename)
+        out.write(u"#include \"%s\"\n" % filename)
       written_input_set.add(filename)
     new_jumbo_file = out.getvalue()
     out.close()
 
     if new_jumbo_file != current_jumbo_file:
-      with open(output_file, "w") as out:
+      with io.open(output_file, mode="w", encoding="utf-8") as out:
         out.write(new_jumbo_file)
 
 

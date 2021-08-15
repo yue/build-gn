@@ -156,19 +156,8 @@ declare_args() {
   # When false, components will be linked statically.
   #
   # For more information see
-  # https://chromium.googlesource.com/chromium/src/+/master/docs/component_build.md
+  # https://chromium.googlesource.com/chromium/src/+/main/docs/component_build.md
   is_component_build = is_debug && current_os != "ios"
-}
-
-declare_args() {
-  # Regression Test Selection (RTS).
-  # https://chromium.googlesource.com/chromium/src/+/master/docs/testing/regression-test-selection.md
-  #
-  # Exclude unittest/browsertest files listed in this file.
-  #
-  # Entries should be newline separated.
-  # Each entry much be an source-absolute path starting with //.
-  rts_exclude_file = ""
 }
 
 assert(!(is_debug && is_official_build), "Can't do official debug builds")
@@ -240,9 +229,10 @@ if (target_os == "android") {
 } else if (target_os == "fuchsia") {
   _default_toolchain = "//build/toolchain/fuchsia:$target_cpu"
 } else if (target_os == "ios") {
-  _default_toolchain = "//build/toolchain/mac:ios_clang_$target_cpu"
+  _default_toolchain = "//build/toolchain/ios:ios_clang_$target_cpu"
 } else if (target_os == "mac") {
-  assert(host_os == "mac", "Mac cross-compiles are unsupported.")
+  assert(host_os == "mac" || host_os == "linux",
+         "Mac cross-compiles are unsupported.")
   _default_toolchain = "//build/toolchain/mac:clang_$target_cpu"
 } else if (target_os == "win") {
   # On Windows, we use the same toolchain for host and target by default.
@@ -340,6 +330,8 @@ default_compiler_configs = [
   "//build/config/compiler:thin_archive",
   "//build/config/compiler:thinlto_optimize_default",
   "//build/config/compiler:default_init_stack_vars",
+  # PATCH(build-gn): This would break building loadable modules.
+  # "//build/config/compiler:no_unresolved_symbols",
   "//build/config/compiler/pgo:default_pgo_flags",
   "//build/config/coverage:default_coverage",
   "//build/config/sanitizers:default_sanitizer_flags",
@@ -583,34 +575,5 @@ set_defaults("component") {
     }
   } else {
     configs = default_compiler_configs
-  }
-}
-
-# ==============================================================================
-# Regression Test Selection (RTS)
-# https://chromium.googlesource.com/chromium/src/+/master/docs/testing/regression-test-selection.md
-# ==============================================================================
-if (rts_exclude_file != "") {
-  rts_exclusions = read_file(rts_exclude_file, "list lines")
-
-  # Many tests are included in source_sets
-  template("source_set") {
-    _target_name = target_name
-    target("source_set", _target_name) {
-      forward_variables_from(invoker, "*", TESTONLY_AND_VISIBILITY)
-      forward_variables_from(invoker, TESTONLY_AND_VISIBILITY)
-
-      if (defined(sources) && sources != []) {
-        # Normalize paths
-        abs_paths = get_path_info(sources, "abspath")
-
-        # Filter
-        filtered_sources = filter_exclude(abs_paths, rts_exclusions)
-
-        # Do the replacement
-        sources = []
-        sources = filtered_sources
-      }
-    }
   }
 }

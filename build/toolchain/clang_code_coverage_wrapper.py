@@ -84,6 +84,14 @@ _COVERAGE_EXCLUSION_LIST_MAP = {
         # This file caused webview native library failed on arm64.
         '../../device/gamepad/dualshock4_controller.cc',
     ],
+    'fuchsia': [
+        # TODO(crbug.com/1174725): These files caused clang to crash while
+        # compiling them.
+        '../../base/allocator/partition_allocator/pcscan.cc',
+        '../../third_party/skia/src/core/SkOpts.cpp',
+        '../../third_party/skia/src/opts/SkOpts_hsw.cpp',
+        '../../third_party/skia/third_party/skcms/skcms.cc',
+    ],
     'linux': [
         # These files caused a static initializer to be generated, which
         # shouldn't.
@@ -207,6 +215,9 @@ def main():
   # correct separator for the current platform (i.e. '\' on Windows and '/'
   # otherwise).
   compile_source_file = os.path.normpath(compile_command[source_flag_index + 1])
+  extension = os.path.splitext(compile_source_file)[1]
+  if not extension in ['.c', '.cc', '.cpp', '.cxx', '.m', '.mm', '.S']:
+    raise Exception('Invalid source file %s found' % compile_source_file)
   exclusion_list = _COVERAGE_EXCLUSION_LIST_MAP.get(
       target_os, _DEFAULT_COVERAGE_EXCLUSION_LIST)
   force_list = _COVERAGE_FORCE_LIST_MAP.get(target_os, [])

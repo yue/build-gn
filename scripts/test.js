@@ -6,7 +6,6 @@
 
 const {argv, version, targetCpu, targetOs, execSync} = require('./common')
 
-const os = require('os')
 const path = require('path')
 const extract = require('./libs/extract-zip')
 const fs = require('./libs/fs-extra')
@@ -15,8 +14,7 @@ const zipname = `gn_${version}_${targetOs}_${targetCpu}`
 
 // On Windows the tmpdir may live in a different volume from current dir, which
 // will cause problems with ninja and gn, so operate in current dir instead.
-const tmppath = process.platform === 'win32' ? path.resolve('tmp')
-                                             : path.join(os.tmpdir(), zipname)
+const tmppath = path.resolve('out', 'Assets')
 
 main()
 

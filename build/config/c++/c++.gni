@@ -40,7 +40,7 @@ declare_args() {
 }
 
 use_custom_libcxx =
-    use_custom_libcxx || (use_custom_libcxx_for_host && current_cpu == host_cpu)
+    use_custom_libcxx || (use_custom_libcxx_for_host && !is_a_target_toolchain)
 use_custom_libcxx = use_custom_libcxx && !is_nacl
 
 declare_args() {
@@ -56,7 +56,7 @@ declare_args() {
 # libc++abi needs to be exported from executables to be picked up by shared
 # libraries on certain instrumented builds.
 export_libcxxabi_from_executables =
-    use_custom_libcxx && !is_ios && !is_win && !is_component_build &&
+    use_custom_libcxx && !is_apple && !is_win && !is_component_build &&
     (is_asan || is_ubsan_vptr)
 
 # On Android, many shared libraries get loaded from the context of a JRE.  In

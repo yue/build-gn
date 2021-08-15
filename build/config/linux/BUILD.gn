@@ -15,6 +15,15 @@ group("linux") {
 # is applied to all targets. It is here to separate out the logic that is
 # Linux-only. This is not applied to Android, but is applied to ChromeOS.
 config("compiler") {
+  if (current_cpu == "arm64") {
+    import("//build/config/arm.gni")
+    cflags = []
+    asmflags = []
+    if (arm_control_flow_integrity == "standard") {
+      cflags += [ "-mbranch-protection=standard" ]
+      asmflags += [ "-mbranch-protection=standard" ]
+    }
+  }
 }
 
 # This is included by reference in the //build/config/compiler:runtime_library
@@ -24,9 +33,7 @@ config("compiler") {
 config("runtime_library") {
   # Set here because OS_CHROMEOS cannot be autodetected in build_config.h like
   # OS_LINUX and the like.
-  # TODO(crbug.com/1052397): Consider changing is_chromeos_ash to is_chromeos after
-  # lacros-chrome switches to target_os="chromeos".
-  if (is_chromeos_ash) {
+  if (is_chromeos) {
     defines = [ "OS_CHROMEOS" ]
   }
 
@@ -54,7 +61,7 @@ if (use_glib) {
       "gthread-2.0",
     ]
     defines = [
-      # PATCH(build-gn): Hell no.
+      # PATCH(build-gn): Not appliable to normal apps.
       # "GLIB_VERSION_MAX_ALLOWED=GLIB_VERSION_2_40",
       # "GLIB_VERSION_MIN_REQUIRED=GLIB_VERSION_2_40",
     ]

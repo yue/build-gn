@@ -12,9 +12,9 @@ declare_args() {
   #     1 : Used during the PGI (instrumentation) phase.
   #     2 : Used during the PGO (optimization) phase.
   chrome_pgo_phase = 0
-  if (is_official_build && (is_win || is_mac)) {
-    # PATCH(build-gn): No PGO.
-    chrome_pgo_phase = 0
+  # PATCH(build-gn): No PGO.
+  if (false) {
+    chrome_pgo_phase = 2
   }
 
   # When using chrome_pgo_phase = 2, read profile data from this path.
