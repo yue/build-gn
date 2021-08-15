@@ -3,36 +3,51 @@ trigger:
 - refs/pull/*/merge
 - refs/tags/*
 
-jobs:
-- job: windows_build
-  displayName: 'Build for Windows'
-  pool:
-    vmImage: 'windows-2019'
-  strategy:
-    matrix:
-      x64:
-        TARGET_CPU: x64
-  steps:
-  - template: azure-pipelines-template.yml
+strategy:
+  matrix:
+    Linux:
+      imageName: 'ubuntu-20.04'
+    macOS:
+      imageName: 'macos-10.15'
+    Windows:
+      imageName: 'windows-2019'
 
-- job: macos_build
-  displayName: 'Build for macOS'
-  pool:
-    vmImage: 'macOS-10.15'
-  strategy:
-    matrix:
-      x64:
-        TARGET_CPU: x64
-  steps:
-  - template: azure-pipelines-template.yml
+pool:
+  vmImage: $(imageName)
 
-- job: linux_build
-  displayName: 'Build for Linux'
-  pool:
-    vmImage: 'ubuntu-18.04'
-  strategy:
-    matrix:
-      x64:
-        TARGET_CPU: x64
-  steps:
-  - template: azure-pipelines-template.yml
+steps:
+- bash: |
+    node scripts/bootstrap.js --target-cpu=x64
+    node scripts/build.js out/Release
+  displayName: Build
+
+- script: node scripts/create_dist.js
+  displayName: Create distribution
+
+- script: node scripts/test.js
+  displayName: Run tests
+
+- bash: |
+    BRANCH=$(Build.SourceBranch)
+    TAG=${BRANCH:10}
+    echo "##vso[task.setvariable variable=Name;isOutput=true]$TAG"
+  displayName: Get Tag Name
+  name: Tag
+  condition: and(succeeded(), startsWith(variables['Build.SourceBranch'], 'refs/tags/'))
+
+- task: GithubRelease@0
+  displayName: Create GitHub Release
+  condition: and(succeeded(), startsWith(variables['Tag.Name'], 'v'))
+  inputs:
+    gitHubConnection: GitHub Yue
+    repositoryName: yue/build-gn
+    action: Edit
+    tagSource: auto
+    tag: $(Tag.Name)
+    title: GN $(Tag.name)
+    releaseNotesSource: input
+    releaseNotes: (placeholder)
+    assets: 'out/Release/*.zip'
+    assetUploadMode: replace
+    isDraft: true
+    addChangelog: false
