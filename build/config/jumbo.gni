@@ -65,6 +65,12 @@ template("internal_jumbo_target") {
     }
   }
 
+  jumbo_max_file_count = jumbo_file_merge_limit
+  if (defined(invoker.jumbo_max_file_count)) {
+    jumbo_max_file_count = invoker.jumbo_max_file_count
+  }
+  assert(jumbo_max_file_count > 0)
+
   excluded_sources = []
   if (defined(invoker.jumbo_excluded_sources)) {
     excluded_sources += invoker.jumbo_excluded_sources
@@ -117,7 +123,7 @@ template("internal_jumbo_target") {
           jumbo_files += [ "$gen_target_dir/" + target_name + "_jumbo_" +
                            next_chunk_number + ".cc" ]
           next_chunk_number += 1
-          next_chunk_start += jumbo_file_merge_limit
+          next_chunk_start += jumbo_max_file_count
         }
         current_file_index += 1
       }
