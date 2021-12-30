@@ -6,6 +6,7 @@ import("//build/config/chrome_build.gni")
 import("//build/config/gclient_args.gni")
 import("//build/config/mac/mac_sdk_overrides.gni")
 import("//build/toolchain/goma.gni")
+import("//build/toolchain/rbe.gni")
 import("//build/toolchain/toolchain.gni")
 
 assert(current_os == "mac" || current_toolchain == default_toolchain)
@@ -39,18 +40,17 @@ declare_args() {
   # The SDK version used when making official builds. This is a single exact
   # version, not a minimum. If this version isn't available official builds
   # will fail.
-  mac_sdk_official_version = "11.3"
+  mac_sdk_official_version = "12.0"
 
   # Production builds should use hermetic Xcode. If you want to do production
   # builds with system Xcode to test new SDKs, set this.
   # Don't set this on any bots.
-  mac_allow_system_xcode_for_official_builds_for_testing = false
   # PATCH(build-gn): Use the system xcode.
   mac_allow_system_xcode_for_official_builds_for_testing = true
 
   # PATCH(build-gn): Required for XCode 12.5, can be removed after upgraded.
   xcode_version_int = 0
-}
+  }
 
 # Check that the version of macOS SDK used is the one requested when building
 # a version of Chrome shipped to the users. Disable the check if building for
@@ -85,7 +85,7 @@ if (!use_system_xcode) {
 
 # Goma RBE requires paths relative to source directory. When using system
 # Xcode, this is done by creating symbolic links in root_build_dir.
-if (use_system_xcode && use_goma) {
+if (use_system_xcode && (use_goma || use_remoteexec)) {
   sdk_info_args += [
     "--get_sdk_info",
     "--create_symlink_at",
@@ -99,7 +99,7 @@ xcode_version = _mac_sdk_result.xcode_version
 xcode_build = _mac_sdk_result.xcode_build
 # PATCH(build-gn): Needed for Xcode 12.5. Can be removed after upgraded.
 xcode_version_int = _mac_sdk_result.xcode_version_int
-if (mac_sdk_path == "" && use_system_xcode && use_goma) {
+if (mac_sdk_path == "" && use_system_xcode && (use_goma || use_remoteexec)) {
   mac_sdk_path = _mac_sdk_result.sdk_path
 }
 
