@@ -29,6 +29,28 @@ if (is_ios) {
 }
 
 declare_args() {
+  # Set to true to use the android unwinder V2 implementation.
+  use_android_unwinder_v2 = false
+
+  # If this running on a GPU FYI bot.
+  # TODO(https://crbug.com/1233871): Remove this again.
+  is_gpu_fyi_bot = false
+}
+
+declare_args() {
+  # Set to true to use lld, the LLVM linker.
+  # In late bring-up on macOS (see docs/mac_lld.md).
+  # Tentatively used on iOS, except in cronet builds (cronet still supports
+  # 32-bit builds, which lld doesn't support) or when targeting "catalyst"
+  # (which lld doesn't support either).
+  # The default linker everywhere else.
+  use_lld = is_clang && !(is_mac && is_gpu_fyi_bot) && current_os != "zos" &&
+            # PATCH(build-gn): Support use_xcode_clang.
+            !use_xcode_clang &&
+            !(is_ios && (is_cronet_build || target_environment == "catalyst"))
+}
+
+declare_args() {
   # Default to warnings as errors for default workflow, where we catch
   # warnings with known toolchains. Allow overriding this e.g. for Chromium
   # builds on Linux that could use a different version of the compiler.
@@ -134,7 +156,7 @@ declare_args() {
 # and build arguments.
 # TODO(crbug.com/1052397): Consider changing is_chromeos_ash to is_chromeos after
 # lacros-chrome switches to target_os="chromeos".
-if (is_chromeos_ash || is_chromeos_lacros) {
+if (is_chromeos) {
   # ChromeOS generally prefers frame pointers, to support CWP.
   # However, Clang does not currently generate usable frame pointers in ARM
   # 32-bit builds (https://bugs.llvm.org/show_bug.cgi?id=18505) so disable them
@@ -163,10 +185,12 @@ if (is_chromeos_ash || is_chromeos_lacros) {
       # For caller-callee instrumentation version which needs frame pointers to
       # get the caller address.
       use_call_graph
+} else if (is_fuchsia) {
+  # Fuchsia on arm64 could use shadow call stack for unwinding.
+  enable_frame_pointers = current_cpu != "arm64"
 } else {
-  # Explicitly ask for frame pointers, otherwise:
-  # * Stacks may be missing for sanitizer and profiling builds.
-  # * Debug tcmalloc can crash (crbug.com/636489).
+  # Explicitly ask for frame pointers, otherwise stacks may be missing for
+  # sanitizer and profiling builds.
   enable_frame_pointers = using_sanitizer || enable_profiling || is_debug
 }
 
@@ -196,24 +220,6 @@ can_unwind_with_cfi_table = is_android && !is_component_build &&
 # TODO(crbug.com/1090409): Replace can_unwind_with_cfi_table with this once
 # sampling profiler is enabled on android.
 enable_arm_cfi_table = is_android && !is_component_build && current_cpu == "arm"
-
-declare_args() {
-  # If this running on a GPU FYI bot.
-  # TODO(https://crbug.com/1233871): Remove this again.
-  is_gpu_fyi_bot = false
-}
-
-declare_args() {
-  # Set to true to use lld, the LLVM linker.
-  # In late bring-up on macOS (see docs/mac_lld.md).
-  # Tentatively used on iOS, except in cronet builds (cronet still supports 32-bit builds, which
-  # lld doesn't support).
-  # The default linker everywhere else.
-  use_lld = is_clang && !(is_ios && is_cronet_build) &&
-            # PATCH(build-gn): Support use_xcode_clang.
-            !use_xcode_clang &&
-            !(is_mac && is_gpu_fyi_bot) && current_os != "zos"
-}
 
 declare_args() {
   # Whether to use the gold linker from binutils instead of lld or bfd.

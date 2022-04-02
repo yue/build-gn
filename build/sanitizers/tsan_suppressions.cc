@@ -16,7 +16,7 @@
 // for the instructions on writing suppressions.
 char kTSanDefaultSuppressions[] =
     // False positives in libdbus.so, libdconfsettings.so, libflashplayer.so,
-    // libgio.so, libglib.so and libgobject.so.
+    // libgio.so, libglib.so, libgobject.so, and libfontconfig.so.1.
     // Since we don't instrument them, we cannot reason about the
     // synchronization in them.
     "race:libdbus*.so\n"
@@ -25,6 +25,7 @@ char kTSanDefaultSuppressions[] =
     "race:libgio*.so\n"
     "race:libglib*.so\n"
     "race:libgobject*.so\n"
+    "race:libfontconfig.so.1\n"
 
     // Intentional race in ToolsSanityTest.DataRace in base_unittests.
     "race:base/tools_sanity_unittest.cc\n"
@@ -80,9 +81,6 @@ char kTSanDefaultSuppressions[] =
     // http://crbug.com/380554
     "deadlock:g_type_add_interface_static\n"
 
-    // http:://crbug.com/386385
-    "race:content::AppCacheStorageImpl::DatabaseTask::CallRunCompleted\n"
-
     // http://crbug.com/397022
     "deadlock:"
     "base::trace_event::TraceEventTestFixture_ThreadOnceBlocking_Test::"
@@ -131,6 +129,10 @@ char kTSanDefaultSuppressions[] =
 
     // https://crbug.com/1158622
     "race:absl::synchronization_internal::Waiter::Post\n"
+
+    // Harmless data races, see WTF::StringImpl::Release code comments.
+    "race:scoped_refptr<WTF::StringImpl>::AddRef\n"
+    "race:scoped_refptr<WTF::StringImpl>::Release\n"
 
     // End of suppressions.
     ;  // Please keep this semicolon.

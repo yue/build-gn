@@ -16,7 +16,7 @@ declare_args() {
   # conjunction with setting the llvm_force_head_revision DEPS variable when
   # `gclient runhooks` is run as well.
   llvm_force_head_revision = false
-  
+
   # PATCH(build-gn): Compile with Xcode version of clang instead of hermetic
   # version shipped with the build.
   use_xcode_clang = is_apple
@@ -24,14 +24,6 @@ declare_args() {
   # Used for binary size analysis.
   generate_linker_map = is_android && is_official_build
 }
-
-# This variable is no longer used in Chromium, but some projects based on
-# //build still reference it, so keep defining until all references have
-# been removed from those projects. It is defined outside of `declare_args`
-# as it setting it in `args.gn` is no longer supported.
-# TODO(crbug.com/1266466): Remove when no longer used by other projects.
-# PATCH(build-gn): Enable use_xcode_clang.
-# use_xcode_clang = false
 
 if (generate_linker_map) {
   assert(is_official_build || is_chromecast,
@@ -45,7 +37,7 @@ if (generate_linker_map) {
 }
 
 declare_args() {
-  clang_version = "14.0.0"
+  clang_version = "15.0.0"
 }
 
 # Extension for shared library files (including leading dot).

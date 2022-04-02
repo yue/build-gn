@@ -16,6 +16,10 @@ import os
 import subprocess
 import sys
 import tempfile
+SRC_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+sys.path.insert(0, os.path.join(SRC_DIR, 'build', 'util'))
+from lib.results import result_sink
+from lib.results import result_types
 
 
 @contextlib.contextmanager
@@ -105,7 +109,8 @@ _TRACKED_GROUPS = [
     _Group(paths=['nacl_irt_x86_64.nexe'], title='File: nacl_irt_x86_64.nexe'),
     _Group(paths=['resources.pak'], title='File: resources.pak'),
     _Group(paths=[
-        'chrome_100_percent.pak', 'chrome_200_percent.pak', 'headless_lib.pak'
+        'chrome_100_percent.pak', 'chrome_200_percent.pak',
+        'headless_lib_data.pak', 'headless_lib_strings.pak'
     ],
            title='Group: Other PAKs'),
     _Group(paths=['snapshot_blob.bin'], title='Group: Misc'),
@@ -240,7 +245,7 @@ def _dump_chart_json(output_dir, chartjson):
 
   histogram_path = os.path.join(output_dir, 'perf_results.json')
   logging.critical('Dumping histograms to %s', histogram_path)
-  with open(histogram_path, 'w') as json_file:
+  with open(histogram_path, 'wb') as json_file:
     json_file.write(histogram_result.stdout)
 
 
@@ -344,6 +349,14 @@ def main():
         json.dump(isolated_script_output, output_file)
       with open(args.isolated_script_test_output, 'w') as output_file:
         json.dump(isolated_script_output, output_file)
+  result_sink_client = result_sink.TryInitClient()
+  if result_sink_client:
+    status = result_types.PASS
+    if not isolated_script_output['valid']:
+      status = result_types.UNKNOWN
+    elif isolated_script_output['failures']:
+      status = result_types.FAIL
+    result_sink_client.Post(test_name, status, None, None, None)
 
 
 if __name__ == '__main__':

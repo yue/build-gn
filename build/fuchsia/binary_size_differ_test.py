@@ -60,6 +60,10 @@ class BinarySizeDifferTest(unittest.TestCase):
     blobs[package][name] = new_blob
 
   def testComputePackageDiffs(self):
+    # TODO(1309977): Disabled on Windows because Windows doesn't allow opening a
+    # NamedTemporaryFile by name.
+    if os.name == 'nt':
+      return
     with tempfile.NamedTemporaryFile(mode='w') as before_file:
       before_file.write(_EXAMPLE_BLOBS_BEFORE)
       before_file.flush()
@@ -108,8 +112,7 @@ class BinarySizeDifferTest(unittest.TestCase):
 
         other_blobs = copy.deepcopy(blobs)
         # Increase the limit of is_counted=false does not increase limit.
-        self.ChangeBlobSize(other_blobs, 'web_engine', 'meta.far',
-                            (16 * 1024 + 1))
+        self.ChangeBlobSize(other_blobs, 'web_engine', 'meta.far', (16 * 1024))
         binary_sizes.WritePackageBlobsJson(after_file.name, other_blobs)
         growth = binary_size_differ.ComputePackageDiffs(before_file.name,
                                                         after_file.name)

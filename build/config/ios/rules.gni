@@ -1771,7 +1771,7 @@ template("ios_xctest_bundle") {
     _info_plist_bundle = _target_name + "_info_plist_bundle"
 
     # Bundle identifier should respect rfc1034, so replace "_" with "-".
-    _bundle_identifier = "$ios_app_bundle_id_prefix.gtest." +
+    _bundle_identifier = "$ios_app_bundle_id_prefix.chrome." +
                          string_replace(_output_name, "_", "-")
 
     ios_info_plist(_info_plist_target) {
@@ -1945,12 +1945,7 @@ template("ios_xctest_test") {
   }
 
   ios_app_bundle(_host_target) {
-    forward_variables_from(invoker,
-                           "*",
-                           [
-                             "testonly",
-                             "bundle_identifier",
-                           ])
+    forward_variables_from(invoker, "*", [ "testonly" ])
 
     testonly = true
     output_name = _host_output
@@ -2022,7 +2017,7 @@ template("ios_xcuitest_test_runner_bundle") {
   }
 
   # Bundle identifier should respect rfc1034, so replace "_" with "-".
-  _bundle_identifier = "$ios_app_bundle_id_prefix.gtest." +
+  _bundle_identifier = "$ios_app_bundle_id_prefix.chrome." +
                        string_replace(_output_name, "_", "-")
 
   _xctrunner_path =

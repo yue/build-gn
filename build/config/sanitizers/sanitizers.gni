@@ -50,19 +50,12 @@ declare_args() {
   # See http://clang.llvm.org/docs/ControlFlowIntegrity.html
   #
   # TODO(pcc): Remove this flag if/when CFI is enabled in all official builds.
-  #
-  # Disable this on linux-chromeos to avoid using ThinLTO there;
-  # crbug.com/1033839. Similarly, don't use this on ARC builds.
-  #
-  # TODO(crbug.com/1159424): Reassess the validity of the next expression.
   # PATCH(build-gn): Not needed by most apps.
   is_cfi = false
 
   # Enable checks for indirect function calls via a function pointer.
   # TODO(pcc): remove this when we're ready to add these checks by default.
   # https://crbug.com/701919
-  #
-  # TODO(crbug.com/1159424): Reassess the validity of the next expression.
   # PATCH(build-gn): Breaks dynamical module loading.
   use_cfi_icall = false
 
@@ -118,7 +111,7 @@ declare_args() {
   # Enable checks for bad casts: derived cast and unrelated cast.
   # TODO(krasin): remove this, when we're ready to add these checks by default.
   # https://crbug.com/626794
-  use_cfi_cast = is_cfi && (is_chromeos_ash || is_chromeos_lacros)
+  use_cfi_cast = is_cfi && is_chromeos
 
   # Compile for Undefined Behaviour Sanitizer's vptr checks.
   is_ubsan_vptr = is_ubsan_security

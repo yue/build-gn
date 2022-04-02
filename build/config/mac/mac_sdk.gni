@@ -40,17 +40,14 @@ declare_args() {
   # The SDK version used when making official builds. This is a single exact
   # version, not a minimum. If this version isn't available official builds
   # will fail.
-  mac_sdk_official_version = "12.0"
+  mac_sdk_official_version = "12.3"
 
   # Production builds should use hermetic Xcode. If you want to do production
   # builds with system Xcode to test new SDKs, set this.
   # Don't set this on any bots.
   # PATCH(build-gn): Use the system xcode.
   mac_allow_system_xcode_for_official_builds_for_testing = true
-
-  # PATCH(build-gn): Required for XCode 12.5, can be removed after upgraded.
-  xcode_version_int = 0
-  }
+}
 
 # Check that the version of macOS SDK used is the one requested when building
 # a version of Chrome shipped to the users. Disable the check if building for
@@ -97,8 +94,6 @@ sdk_info_args += [ mac_sdk_name ]
 _mac_sdk_result = exec_script(script_name, sdk_info_args, "scope")
 xcode_version = _mac_sdk_result.xcode_version
 xcode_build = _mac_sdk_result.xcode_build
-# PATCH(build-gn): Needed for Xcode 12.5. Can be removed after upgraded.
-xcode_version_int = _mac_sdk_result.xcode_version_int
 if (mac_sdk_path == "" && use_system_xcode && (use_goma || use_remoteexec)) {
   mac_sdk_path = _mac_sdk_result.sdk_path
 }

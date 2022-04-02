@@ -174,10 +174,14 @@ class FvdlTarget(emu_target.EmuTarget):
       for flag in env_flags:
         emu_command.extend(['--envs', flag])
 
-  def _WaitUntilReady(self):
-    # Indicates the FVDL command finished running.
+  def _HasNetworking(self):
+    return self._with_network
+
+  def _ConnectToTarget(self):
+    # Wait for the emulator to finish starting up.
+    logging.info('Waiting for fvdl to start...')
     self._emu_process.communicate()
-    super(FvdlTarget, self)._WaitUntilReady()
+    super(FvdlTarget, self)._ConnectToTarget()
 
   def _IsEmuStillRunning(self):
     if not self._pid:
@@ -192,15 +196,19 @@ class FvdlTarget(emu_target.EmuTarget):
         logging.error('vdl_output file no longer found. '
                       'Cannot get emulator pid.')
         return False
-    if subprocess.check_output(['ps', '-p', self._pid, 'o', 'comm=']):
-      return True
+    try:
+      if subprocess.check_output(['ps', '-p', self._pid, 'o', 'comm=']):
+        return True
+    except subprocess.CalledProcessError:
+      # The process must be gone.
+      pass
     logging.error('Emulator pid no longer found. Emulator must be down.')
     return False
 
   def _GetEndpoint(self):
     if self._with_network:
       return self._GetNetworkAddress()
-    return ('localhost', self._host_ssh_port)
+    return (self.LOCAL_ADDRESS, self._host_ssh_port)
 
   def _GetNetworkAddress(self):
     if self._host:
@@ -219,7 +227,7 @@ class FvdlTarget(emu_target.EmuTarget):
       logging.error('vdl_output file not found. Cannot get network address.')
       raise
 
-  def Shutdown(self):
+  def _Shutdown(self):
     if not self._emu_process:
       logging.error('%s did not start' % (self.EMULATOR_NAME))
       return
