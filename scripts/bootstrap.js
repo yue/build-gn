@@ -14,8 +14,8 @@ let sysrootArch = {
 
 execSync('node scripts/update_gn.js')
 if (process.platform == 'linux') {
-  execSync('python tools/clang/scripts/update.py')
-  execSync(`python build/linux/sysroot_scripts/install-sysroot.py --arch ${sysrootArch}`)
+  execSync('python3 tools/clang/scripts/update.py')
+  execSync(`python3 build/linux/sysroot_scripts/install-sysroot.py --arch ${sysrootArch}`)
 }
 
 execSync('git submodule sync --recursive')
@@ -23,6 +23,7 @@ execSync('git submodule update --init --recursive')
 
 const commonConfig = [
   'use_jumbo_build=true',
+  'use_cxx17=true',
   'treat_warnings_as_errors=false',
   `target_cpu="${targetCpu}"`,
 ]
@@ -34,11 +35,13 @@ const debugConfig = [
 const releaseConfig = [
   'is_component_build=false',
   'is_debug=false',
+  'is_official_build=true',
 ]
 
 if (targetOs == 'linux') {
   // Use prebuilt clang binaries.
-  commonConfig.push('is_clang=true')
+  commonConfig.push('is_clang=true',
+                    'clang_use_chrome_plugins=false')
   // Use sysroot.
   releaseConfig.push('use_sysroot=true')
   // Link with libc++ statically.

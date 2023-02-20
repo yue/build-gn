@@ -1,16 +1,14 @@
-# Copyright 2018 The Chromium Authors. All rights reserved.
+# Copyright 2018 The Chromium Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
 import logging
 import os
 import platform
-import signal
+import shutil
 import socket
 import subprocess
 import sys
-import time
-import threading
 
 DIR_SOURCE_ROOT = os.path.abspath(
     os.path.join(os.path.dirname(__file__), os.pardir, os.pardir))
@@ -44,7 +42,7 @@ def GetHostArchFromPlatform():
   # platform.machine() returns AMD64 on 64-bit Windows.
   if host_arch in ['x86_64', 'AMD64']:
     return 'x64'
-  elif host_arch == 'aarch64':
+  elif host_arch in ['aarch64', 'arm64']:
     return 'arm64'
   raise Exception('Unsupported host architecture: %s' % host_arch)
 
@@ -53,7 +51,10 @@ def GetHostToolPathFromPlatform(tool):
   return os.path.join(SDK_ROOT, 'tools', GetHostArchFromPlatform(), tool)
 
 
+# Remove when arm64 emulator is also included in Fuchsia SDK.
 def GetEmuRootForPlatform(emulator):
+  if GetHostArchFromPlatform() == 'x64':
+    return GetHostToolPathFromPlatform('{0}_internal'.format(emulator))
   return os.path.join(
       DIR_SOURCE_ROOT, 'third_party', '{0}-{1}-{2}'.format(
           emulator, GetHostOsFromPlatform(), GetHostArchFromPlatform()))
@@ -108,12 +109,11 @@ def RunGnSdkFunction(script, function):
   return SubprocessCallWithTimeout(function_cmd)
 
 
-def SubprocessCallWithTimeout(command, silent=False, timeout_secs=None):
+def SubprocessCallWithTimeout(command, timeout_secs=None):
   """Helper function for running a command.
 
   Args:
     command: The command to run.
-    silent: If true, stdout and stderr of the command will not be printed.
     timeout_secs: Maximum amount of time allowed for the command to finish.
 
   Returns:
@@ -121,38 +121,16 @@ def SubprocessCallWithTimeout(command, silent=False, timeout_secs=None):
     an exception if the subprocess times out.
   """
 
-  if silent:
-    devnull = open(os.devnull, 'w')
-    process = subprocess.Popen(command,
-                               stdout=devnull,
-                               stderr=devnull,
-                               text=True)
-  else:
-    process = subprocess.Popen(command,
-                               stdout=subprocess.PIPE,
-                               stderr=subprocess.PIPE,
-                               text=True)
-  timeout_timer = None
-  if timeout_secs:
+  process = None
+  try:
+    process = subprocess.run(command,
+                             capture_output=True,
+                             timeout=timeout_secs,
+                             encoding='utf-8')
+  except subprocess.TimeoutExpired as te:
+    raise TimeoutError(str(te))
 
-    def interrupt_process():
-      process.send_signal(signal.SIGKILL)
-
-    timeout_timer = threading.Timer(timeout_secs, interrupt_process)
-
-    # Ensure that keyboard interrupts are handled properly (crbug/1198113).
-    timeout_timer.daemon = True
-
-    timeout_timer.start()
-
-  out, err = process.communicate()
-  if timeout_timer:
-    timeout_timer.cancel()
-
-  if process.returncode == -9:
-    raise Exception('Timeout when executing \"%s\".' % ' '.join(command))
-
-  return process.returncode, out, err
+  return process.returncode, process.stdout, process.stderr
 
 
 def IsRunningUnattended():
@@ -162,3 +140,10 @@ def IsRunningUnattended():
   """
   # Chromium tests only for the presence of the variable, so match that here.
   return 'CHROME_HEADLESS' in os.environ
+
+
+def MakeCleanDirectory(directory_name):
+  """If the directory exists, delete it and then remake it with no contents."""
+  if os.path.exists(directory_name):
+    shutil.rmtree(directory_name)
+  os.mkdir(directory_name)

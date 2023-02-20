@@ -1,7 +1,8 @@
-# Copyright 2013 The Chromium Authors. All rights reserved.
+# Copyright 2013 The Chromium Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import("//build/config/dcheck_always_on.gni")
 import("//build/config/ozone.gni")
 import("//build/config/sysroot.gni")
 import("//build/config/ui.gni")
@@ -191,6 +192,11 @@ clang_toolchain("ash_clang_x64") {
     also_build_ash_chrome = false
     chromeos_is_browser_only = false
     use_clang_coverage = false
+
+    # Never build ash with asan. It is too slow for builders and cause
+    # tests being flaky.
+    is_asan = false
+    is_lsan = false
   }
 }
 
@@ -207,6 +213,8 @@ clang_toolchain("lacros_clang_x64") {
     also_build_lacros_chrome = false
     chromeos_is_browser_only = true
     use_clang_coverage = false
+    dcheck_always_on = false
+    symbol_level = 1
   }
 }
 
@@ -413,7 +421,7 @@ clang_toolchain("clang_loong64") {
 }
 
 gcc_toolchain("loong64") {
-  toolprefix = "loongarch64-linux-gnu"
+  toolprefix = "loongarch64-unknown-linux-gnu"
 
   cc = "${toolprefix}-gcc"
   cxx = "${toolprefix}-g++"

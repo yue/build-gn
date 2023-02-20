@@ -1,4 +1,4 @@
-// Copyright 2021 The Chromium Authors. All rights reserved.
+// Copyright 2021 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -42,7 +42,11 @@
 // do that here, or we could build a crate with a #[global_allocator] and
 // redirect these symbols to that crate instead. The advantage of the latter
 // is that it would work equally well for those cases where rustc is doing
-// the final linking.
+// the final linking. At present, this is not necessary because
+// PartitionAlloc-Everywhere successfully handles the calls to malloc which
+// result from passing through this code. We might want to call into
+// PA directly if we wished for Rust allocations to be in a different
+// partition, or similar, in future.
 //
 // They're weak symbols, because this file will sometimes end up in targets
 // which are linked by rustc, and thus we would otherwise get duplicate
@@ -76,5 +80,8 @@ void* __attribute__((weak)) __rust_alloc_zeroed(size_t a, size_t b) {
 void __attribute__((weak)) __rust_alloc_error_handler(size_t a, size_t b) {
   IMMEDIATE_CRASH();
 }
+
+extern const unsigned char __attribute__((weak))
+__rust_alloc_error_handler_should_panic = 0;
 
 }  // extern "C"

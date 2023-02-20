@@ -9,6 +9,7 @@ checkout_ios_webkit = false
 checkout_nacl = false
 checkout_openxr = false
 checkout_rts_model = false
+checkout_src_internal = false
 cros_boards = ""
 cros_boards_with_qemu_images = ""
 generate_location_tags = false

@@ -1,4 +1,4 @@
-# Copyright (c) 2013 The Chromium Authors. All rights reserved.
+# Copyright 2013 The Chromium Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 #
@@ -10,7 +10,6 @@
 # win tool. The script assumes that the root build directory is the current dir
 # and the files will be written to the current directory.
 
-from __future__ import print_function
 
 import errno
 import json
@@ -23,6 +22,8 @@ sys.path.append(os.path.join(os.path.dirname(__file__), os.pardir, os.pardir))
 import gn_helpers
 
 SCRIPT_DIR = os.path.dirname(__file__)
+SDK_VERSION = '10.0.22621.0'
+
 
 def _ExtractImportantEnvironment(output_of_set):
   """Extracts environment variables required for the toolchain to run from
@@ -58,6 +59,15 @@ def _ExtractImportantEnvironment(output_of_set):
           # path. Add the path to this python here so that if it's not in the
           # path when ninja is run later, python will still be found.
           setting = os.path.dirname(sys.executable) + os.pathsep + setting
+        if envvar in ['include', 'lib']:
+          # Make sure that the include and lib paths point to directories that
+          # exist. This ensures a (relatively) clear error message if the
+          # required SDK is not installed.
+          for part in setting.split(';'):
+            if not os.path.exists(part) and len(part) != 0:
+              raise Exception(
+                  'Path "%s" from environment variable "%s" does not exist. '
+                  'Make sure the necessary SDK is installed.' % (part, envvar))
         env[var.upper()] = setting
         break
   if sys.platform in ('win32', 'cygwin'):
@@ -176,7 +186,7 @@ def _LoadToolchainEnv(cpu, toolchain_root, sdk_dir, target_store):
     # Explicitly specifying the SDK version to build with to avoid accidentally
     # building with a new and untested SDK. This should stay in sync with the
     # packaged toolchain in build/vs_toolchain.py.
-    args.append('10.0.20348.0')
+    args.append(SDK_VERSION)
     variables = _LoadEnvFromBat(args)
   return _ExtractImportantEnvironment(variables)
 
@@ -281,7 +291,7 @@ def main():
 
       if (environment_block_name != ''):
         env_block = _FormatAsEnvironmentBlock(env)
-        with open(environment_block_name, 'w') as f:
+        with open(environment_block_name, 'w', encoding='utf8') as f:
           f.write(env_block)
 
   print('vc_bin_dir = ' + gn_helpers.ToGNString(vc_bin_dir))

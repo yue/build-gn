@@ -1,4 +1,4 @@
-# Copyright 2021 The Chromium Authors. All rights reserved.
+# Copyright 2021 The Chromium Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -20,6 +20,7 @@ import("//build/rust/rust_unit_tests_group.gni")
 #   crate_root (optional)
 #   features (optional)
 #   rustflags (optional)
+#   inputs (optional)
 #     All as in rust_static_library.
 #
 # Example of usage:

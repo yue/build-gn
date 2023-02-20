@@ -1,4 +1,4 @@
-# Copyright 2020 The Chromium Authors. All rights reserved.
+# Copyright 2020 The Chromium Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 """Class for storing Skia Gold comparison properties.
@@ -9,14 +9,17 @@ Examples:
 * What the continuous integration system is
 """
 
-# pylint: disable=useless-object-inheritance
-
+import argparse
 import logging
+import optparse
 import os
+from typing import Union
+
+ParsedCmdArgs = Union[argparse.Namespace, optparse.Values]
 
 
-class SkiaGoldProperties(object):
-  def __init__(self, args):
+class SkiaGoldProperties():
+  def __init__(self, args: ParsedCmdArgs):
     """Abstract class to validate and store properties related to Skia Gold.
 
     Args:
@@ -28,6 +31,7 @@ class SkiaGoldProperties(object):
     self._job_id = None
     self._local_pixel_tests = None
     self._no_luci_auth = None
+    self._service_account = None
     self._bypass_skia_gold_functionality = None
     self._code_review_system = None
     self._continuous_integration_system = None
@@ -35,54 +39,58 @@ class SkiaGoldProperties(object):
 
     self._InitializeProperties(args)
 
-  def IsTryjobRun(self):
+  def IsTryjobRun(self) -> bool:
     return self.issue is not None
 
   @property
-  def continuous_integration_system(self):
+  def continuous_integration_system(self) -> str:
     return self._continuous_integration_system or 'buildbucket'
 
   @property
-  def code_review_system(self):
+  def code_review_system(self) -> str:
     return self._code_review_system or 'gerrit'
 
   @property
-  def git_revision(self):
+  def git_revision(self) -> str:
     return self._GetGitRevision()
 
   @property
-  def issue(self):
+  def issue(self) -> int:
     return self._issue
 
   @property
-  def job_id(self):
+  def job_id(self) -> str:
     return self._job_id
 
   @property
-  def local_pixel_tests(self):
+  def local_pixel_tests(self) -> bool:
     return self._IsLocalRun()
 
   @property
-  def local_png_directory(self):
+  def local_png_directory(self) -> str:
     return self._local_png_directory
 
   @property
-  def no_luci_auth(self):
+  def no_luci_auth(self) -> bool:
     return self._no_luci_auth
 
   @property
-  def patchset(self):
+  def service_account(self) -> str:
+    return self._service_account
+
+  @property
+  def patchset(self) -> int:
     return self._patchset
 
   @property
-  def bypass_skia_gold_functionality(self):
+  def bypass_skia_gold_functionality(self) -> bool:
     return self._bypass_skia_gold_functionality
 
   @staticmethod
-  def _GetGitOriginMainHeadSha1():
+  def _GetGitOriginMainHeadSha1() -> str:
     raise NotImplementedError()
 
-  def _GetGitRevision(self):
+  def _GetGitRevision(self) -> str:
     if not self._git_revision:
       # Automated tests should always pass the revision, so assume we're on
       # a workstation and try to get the local origin/master HEAD.
@@ -96,13 +104,17 @@ class SkiaGoldProperties(object):
       self._git_revision = revision
     return self._git_revision
 
-  def _IsLocalRun(self):
+  def _IsLocalRun(self) -> bool:
     if self._local_pixel_tests is None:
       # Look for the presence of the SWARMING_SERVER environment variable as a
       # heuristic to determine whether we're running on a workstation or a bot.
       # This should always be set on swarming, but would be strange to be set on
       # a workstation.
-      self._local_pixel_tests = 'SWARMING_SERVER' not in os.environ
+      # However, since Skylab technically isn't swarming, we need to look for
+      # an alternative environment variable there.
+      in_swarming = 'SWARMING_SERVER' in os.environ
+      in_skylab = bool(int(os.environ.get('RUNNING_IN_SKYLAB', '0')))
+      self._local_pixel_tests = not (in_swarming or in_skylab)
       if self._local_pixel_tests:
         logging.warning(
             'Automatically determined that test is running on a workstation')
@@ -111,7 +123,32 @@ class SkiaGoldProperties(object):
             'Automatically determined that test is running on a bot')
     return self._local_pixel_tests
 
-  def _InitializeProperties(self, args):
+  @staticmethod
+  def AddCommandLineArguments(parser: argparse.ArgumentParser) -> None:
+    """ Add command line arguments to an ArgumentParser instance
+
+    Args:
+      parser: ArgumentParser instance
+
+    Returns:
+      None
+    """
+    parser.add_argument('--git-revision', type=str, help='Git revision')
+    parser.add_argument('--gerrit-issue', type=int, help='Gerrit issue number')
+    parser.add_argument('--gerrit-patchset',
+                        type=int,
+                        help='Gerrit patchset number')
+    parser.add_argument('--buildbucket-id',
+                        type=int,
+                        help='Buildbucket ID of builder')
+    parser.add_argument('--code-review-system',
+                        type=str,
+                        help='Code review system')
+    parser.add_argument('--continuous-integration-system',
+                        type=str,
+                        help='Continuous integration system')
+
+  def _InitializeProperties(self, args: ParsedCmdArgs) -> None:
     if hasattr(args, 'local_pixel_tests'):
       # If not set, will be automatically determined later if needed.
       self._local_pixel_tests = args.local_pixel_tests
@@ -121,6 +158,11 @@ class SkiaGoldProperties(object):
 
     if hasattr(args, 'no_luci_auth'):
       self._no_luci_auth = args.no_luci_auth
+
+    if hasattr(args, 'service_account'):
+      self._service_account = args.service_account
+      if self._service_account:
+        self._no_luci_auth = True
 
     if hasattr(args, 'bypass_skia_gold_functionality'):
       self._bypass_skia_gold_functionality = args.bypass_skia_gold_functionality

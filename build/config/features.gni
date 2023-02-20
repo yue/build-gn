@@ -1,4 +1,4 @@
-# Copyright 2014 The Chromium Authors. All rights reserved.
+# Copyright 2014 The Chromium Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -23,8 +23,12 @@ declare_args() {
   #
   # Note: this flag is used by WebRTC which is DEPSed into Chrome. Moving it
   # out of //build will require using the build_overrides directory.
-  # PATCH(build-gn): This is Chromium only.
-  proprietary_codecs = false
+  #
+  # Do not add any other conditions to the following line.
+  #
+  # TODO(crbug.com/1314528): Remove chromecast-related conditions and force
+  # builds to explicitly specify this.
+  proprietary_codecs = is_chrome_branded || is_castos || is_cast_android
 
   # libudev usage. This currently only affects the content layer.
   # PATCH(build-gn): This is Chromium only.
@@ -33,6 +37,8 @@ declare_args() {
   use_dbus = false
 
   use_gio = false
+
+  use_blink = true
 }
 #
 # =============================================

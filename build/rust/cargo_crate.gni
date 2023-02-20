@@ -1,4 +1,4 @@
-# Copyright 2021 The Chromium Authors. All rights reserved.
+# Copyright 2021 The Chromium Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -24,6 +24,7 @@ import("//build/rust/rust_target.gni")
 #  crate_root
 #  epoch
 #  deps
+#  aliased_deps
 #  features
 #  build_native_rust_unit_tests
 #  edition
@@ -64,6 +65,15 @@ import("//build/rust/rust_target.gni")
 #  crate_type "bin", "proc-macro" or "rlib" (optional)
 #    Whether to build an executable. The default is "rlib".
 #    At present others are not supported.
+#
+#  cargo_pkg_authors
+#  cargo_pkg_version
+#  cargo_pkg_name
+#  cargo_pkg_description
+#    Strings as found within 'version' and similar fields within Cargo.toml.
+#    Converted to environment variables passed to rustc, in case the crate
+#    uses clap `crate_version!` or `crate_authors!` macros (fairly common in
+#    command line tool help)
 
 template("cargo_crate") {
   orig_target_name = target_name
@@ -84,9 +94,58 @@ template("cargo_crate") {
         "${_crate_name}_${target_name}_${_epochlabel}_build_script"
   }
 
-  # The main target, either a Rust source set or an executable
+  _rustenv = []
+  if (defined(invoker.rustenv)) {
+    _rustenv = invoker.rustenv
+  }
+  if (defined(invoker.cargo_pkg_authors)) {
+    _rustenv += [ string_join("=",
+                              [
+                                "CARGO_PKG_AUTHORS",
+                                invoker.cargo_pkg_authors,
+                              ]) ]
+  }
+  if (defined(invoker.cargo_pkg_version)) {
+    _rustenv += [ string_join("=",
+                              [
+                                "CARGO_PKG_VERSION",
+                                invoker.cargo_pkg_version,
+                              ]) ]
+  }
+  if (defined(invoker.cargo_pkg_name)) {
+    _rustenv += [ string_join("=",
+                              [
+                                "CARGO_PKG_NAME",
+                                invoker.cargo_pkg_name,
+                              ]) ]
+  }
+  if (defined(invoker.cargo_pkg_description)) {
+    _rustenv += [ string_join("=",
+                              [
+                                "CARGO_PKG_DESCRIPTION",
+                                invoker.cargo_pkg_description,
+                              ]) ]
+  }
+
+  # The main target, either a Rust source set or an executable.
   rust_target(target_name) {
-    # Work out what we're building
+    forward_variables_from(invoker,
+                           "*",
+                           TESTONLY_AND_VISIBILITY + [
+                                 "build_root",
+                                 "build_deps",
+                                 "build_sources",
+                                 "build_script_inputs",
+                                 "build_script_outputs",
+                                 "output_dir",
+                                 "unit_test_target",
+                                 "target_type",
+                                 "configs",
+                                 "rustenv",
+                               ])
+    forward_variables_from(invoker, TESTONLY_AND_VISIBILITY)
+
+    # Work out what we're building.
     crate_type = "rlib"
     if (defined(invoker.crate_type)) {
       crate_type = invoker.crate_type
@@ -94,6 +153,7 @@ template("cargo_crate") {
     if (!defined(rustflags)) {
       rustflags = []
     }
+    rustenv = _rustenv
     if (crate_type == "bin") {
       target_type = "executable"
       assert(!defined(invoker.epoch))
@@ -115,25 +175,21 @@ template("cargo_crate") {
     # for Cargo crates which includes the GN target name to disambiguate them.
     output_dir = "${target_out_dir}/${orig_target_name}"
 
-    # The unit tests for each target, if generated, should be unique as well,
-    # and needs to be unique within the name of the binary itself.
-    unit_test_target = "${_crate_name}_${orig_target_name}_unittests"
-
-    forward_variables_from(invoker,
-                           "*",
-                           [
-                             "build_root",
-                             "build_deps",
-                             "build_sources",
-                             "build_script_inputs",
-                             "build_script_outputs",
-                             "output_dir",
-                             "unit_test_target",
-                             "target_type",
-                             "visibility",
-                             "testonly",
-                             "configs",
-                           ])
+    # The unit tests for each target, if generated, should be unique as well.
+    # a) It needs to be unique even if multiple build targets have the same
+    #    `crate_name`, but different target names.
+    # b) It needs to be unique even if multiple build targets have the same
+    #    `crate_name` and target name, but different epochs.
+    _unit_test_unique_target_name = ""
+    if (_crate_name != orig_target_name) {
+      _unit_test_unique_target_name = "${orig_target_name}_"
+    }
+    _unit_test_unique_epoch = ""
+    if (defined(invoker.epoch)) {
+      _epoch_str = string_replace(invoker.epoch, ".", "_")
+      _unit_test_unique_epoch = "v${_epoch_str}_"
+    }
+    unit_test_target = "${_unit_test_unique_target_name}${_crate_name}_${_unit_test_unique_epoch}unittests"
 
     if (defined(invoker.build_root)) {
       # Uh-oh, we have a build script
@@ -187,7 +243,8 @@ template("cargo_crate") {
     # Extra targets required to make build script work
     action("${build_script_name}_output") {
       script = rebase_path("//build/rust/run_build_script.py")
-      build_script_target = ":${build_script_name}($host_toolchain)"
+      build_script_target =
+          ":${build_script_name}($host_toolchain_no_sanitizers)"
       deps = [ build_script_target ]
 
       _build_script_exe_dir =
@@ -231,16 +288,16 @@ template("cargo_crate") {
           outputs += [ "$_build_script_out_dir/$generated_file" ]
         }
       }
-      if (defined(invoker.rustenv)) {
+      if (_rustenv != []) {
         args += [ "--env" ]
-        args += invoker.rustenv
+        args += _rustenv
       }
       if (defined(invoker.build_script_inputs)) {
         inputs += invoker.build_script_inputs
       }
     }
 
-    if (current_toolchain == host_toolchain) {
+    if (current_toolchain == host_toolchain_no_sanitizers) {
       rust_target(build_script_name) {
         target_type = "executable"
         sources = invoker.build_sources
@@ -248,6 +305,7 @@ template("cargo_crate") {
         if (defined(invoker.build_deps)) {
           deps = invoker.build_deps
         }
+        rustenv = _rustenv
         forward_variables_from(invoker,
                                [
                                  "features",
@@ -272,9 +330,5 @@ template("cargo_crate") {
 
 set_defaults("cargo_crate") {
   library_configs = default_compiler_configs
-  library_configs -= [ "//build/config/compiler:chromium_code" ]
-  library_configs += [ "//build/config/compiler:no_chromium_code" ]
   executable_configs = default_executable_configs
-  executable_configs -= [ "//build/config/compiler:chromium_code" ]
-  executable_configs += [ "//build/config/compiler:no_chromium_code" ]
 }

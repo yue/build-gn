@@ -1,4 +1,4 @@
-// Copyright (c) 2012 The Chromium Authors. All rights reserved.
+// Copyright 2012 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -16,15 +16,18 @@
 //
 //  Operating System:
 //    IS_AIX / IS_ANDROID / IS_ASMJS / IS_CHROMEOS / IS_FREEBSD / IS_FUCHSIA /
-//    IS_IOS / IS_LINUX / IS_MAC / IS_NACL / IS_NETBSD / IS_OPENBSD / IS_QNX /
-//    IS_SOLARIS / IS_WIN
+//    IS_IOS / IS_IOS_MACCATALYST / IS_LINUX / IS_MAC / IS_NACL / IS_NETBSD /
+//    IS_OPENBSD / IS_QNX / IS_SOLARIS / IS_WIN
 //  Operating System family:
-//    IS_APPLE: IOS or MAC
+//    IS_APPLE: IOS or MAC or IOS_MACCATALYST
 //    IS_BSD: FREEBSD or NETBSD or OPENBSD
 //    IS_POSIX: AIX or ANDROID or ASMJS or CHROMEOS or FREEBSD or IOS or LINUX
 //              or MAC or NACL or NETBSD or OPENBSD or QNX or SOLARIS
 
 // This file also adds defines specific to the platform, architecture etc.
+//
+//  Platform:
+//    IS_OZONE
 //
 //  Compiler:
 //    COMPILER_MSVC / COMPILER_GCC
@@ -49,7 +52,7 @@
 #ifndef BUILD_BUILD_CONFIG_H_
 #define BUILD_BUILD_CONFIG_H_
 
-#include "build/buildflag.h"
+#include "build/buildflag.h"  // IWYU pragma: export
 
 // A set of macros to use for platform detection.
 #if defined(__native_client__)
@@ -64,6 +67,11 @@
 #include <TargetConditionals.h>
 #if defined(TARGET_OS_IPHONE) && TARGET_OS_IPHONE
 #define OS_IOS 1
+// Catalyst is the technology that allows running iOS apps on macOS. These
+// builds are both OS_IOS and OS_IOS_MACCATALYST.
+#if defined(TARGET_OS_MACCATALYST) && TARGET_OS_MACCATALYST
+#define OS_IOS_MACCATALYST
+#endif  // defined(TARGET_OS_MACCATALYST) && TARGET_OS_MACCATALYST
 #else
 #define OS_MAC 1
 // PATCH(build-gn): Be backward compatible.
@@ -182,6 +190,12 @@
 #define BUILDFLAG_INTERNAL_IS_IOS() (0)
 #endif
 
+#if defined(OS_IOS_MACCATALYST)
+#define BUILDFLAG_INTERNAL_IS_IOS_MACCATALYST() (1)
+#else
+#define BUILDFLAG_INTERNAL_IS_IOS_MACCATALYST() (0)
+#endif
+
 #if defined(OS_LINUX)
 #define BUILDFLAG_INTERNAL_IS_LINUX() (1)
 #else
@@ -234,6 +248,12 @@
 #define BUILDFLAG_INTERNAL_IS_WIN() (1)
 #else
 #define BUILDFLAG_INTERNAL_IS_WIN() (0)
+#endif
+
+#if defined(USE_OZONE)
+#define BUILDFLAG_INTERNAL_IS_OZONE() (1)
+#else
+#define BUILDFLAG_INTERNAL_IS_OZONE() (0)
 #endif
 
 // Compiler detection. Note: clang masquerades as GCC on POSIX and as MSVC on

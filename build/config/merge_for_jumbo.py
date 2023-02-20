@@ -49,6 +49,7 @@ def write_jumbo_files(inputs, outputs, written_input_set, written_output_set):
       written_inputs += 1
       if os.environ.get('JUMBO_INCLUDE_FILE_CONTENTS') == 'true':
         with io.open(filename, mode="r", encoding="utf-8") as f:
+          out.write(u"// %s\n" % filename)
           out.write(f.read() + u"\n")
       else:
         out.write(u"#include \"%s\"\n" % filename)

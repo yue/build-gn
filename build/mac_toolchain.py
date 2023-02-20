@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# Copyright 2018 The Chromium Authors. All rights reserved.
+# Copyright 2018 The Chromium Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -34,16 +34,17 @@ def LoadPList(path):
     return plistlib.load(f)
 
 
-# This contains binaries from Xcode 13.3 13E113, along with the macOS 12 SDK
-# (12.3 21E226). To build these packages, see comments in
+# This contains binaries from Xcode 14.0 14B47b along with the macOS 13 SDK
+# (13.0 22A372). To build these packages, see comments in
 # build/xcode_binaries.yaml
+
 MAC_BINARIES_LABEL = 'infra_internal/ios/xcode/xcode_binaries/mac-amd64'
-MAC_BINARIES_TAG = 'wl06XDJZIYEGTVAMGES--4LcpP_WANb1erYsmeWyJNMC'
+MAC_BINARIES_TAG = '14b47b'
 
 # The toolchain will not be downloaded if the minimum OS version is not met. 19
-# is the major version number for macOS 10.15. Xcode 13.3 13E113 only runs on
-# 12.0 and newer, but some bots are still running older OS versions. 10.15.4,
-# the OS minimum through Xcode 12.4, still seems to work.
+# is the major version number for macOS 10.15. Xcode 14.0 14B47b only runs on
+# macOS 12.4 and newer, but some bots are still running older OS versions. macOS
+# 10.15.4, the OS minimum through Xcode 12.4, still seems to work.
 MAC_MINIMUM_OS_VERSION = [19, 4]
 
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
@@ -159,11 +160,10 @@ def InstallXcodeBinaries():
     return 0
 
   # Use puppet's sudoers script to accept the license if its available.
-  license_accept_script = '/usr/local/bin/xcode_accept_license.py'
+  license_accept_script = '/usr/local/bin/xcode_accept_license.sh'
   if os.path.exists(license_accept_script):
     args = [
-        'sudo', license_accept_script, '--xcode-version', cipd_xcode_version,
-        '--license-version', cipd_license_version
+        'sudo', license_accept_script, cipd_xcode_version, cipd_license_version
     ]
     subprocess.check_call(args)
     return 0

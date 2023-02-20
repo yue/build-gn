@@ -1,12 +1,11 @@
-#!/usr/bin/env vpython
-# Copyright 2022 The Chromium Authors. All rights reserved.
+#!/usr/bin/env vpython3
+# Copyright 2022 The Chromium Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 """A helper tool for running Fuchsia's `ffx`.
 """
 
 # Enable use of the print() built-in function.
-from __future__ import print_function
 
 import argparse
 import contextlib
@@ -19,36 +18,23 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 
 import common
 import log_manager
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__),
+                                             'test')))
+from compatible_utils import parse_host_port
+
+RUN_SUMMARY_SCHEMA = \
+  'https://fuchsia.dev/schema/ffx_test/run_summary-8d1dd964.json'
 
 
 def get_ffx_path():
   """Returns the full path to `ffx`."""
   return os.path.join(common.SDK_ROOT, 'tools',
                       common.GetHostArchFromPlatform(), 'ffx')
-
-
-def parse_host_port(host_port_pair):
-  """Parses a host name or IP address and a port number from a string of any of
-  the following forms:
-  - hostname:port
-  - IPv4addy:port
-  - [IPv6addy]:port
-
-  Returns:
-    A tuple of the string host name/address and integer port number.
-
-  Raises:
-    ValueError if `host_port_pair` does not contain a colon or if the substring
-      following the last colon cannot be converted to an int.
-  """
-  host, port = host_port_pair.rsplit(':', 1)
-  # Strip the brackets if the host looks like an IPv6 address.
-  if len(host) > 2 and host[0] == '[' and host[-1] == ']':
-    host = host[1:-1]
-  return (host, int(port))
 
 
 def format_host_port(host, port):
@@ -64,6 +50,49 @@ class FfxRunner():
   def __init__(self, log_manager):
     self._ffx = get_ffx_path()
     self._log_manager = log_manager
+
+  def _get_daemon_status(self):
+    """Determines daemon status via `ffx daemon socket`.
+
+    Returns:
+      dict of status of the socket. Status will have a key Running or
+      NotRunning to indicate if the daemon is running.
+    """
+    status = json.loads(
+        self.run_ffx(['--machine', 'json', 'daemon', 'socket'],
+                     check=True,
+                     suppress_repair=True))
+    if status.get('pid') and status.get('pid', {}).get('status', {}):
+      return status['pid']['status']
+    return {'NotRunning': True}
+
+  def _is_daemon_running(self):
+    return 'Running' in self._get_daemon_status()
+
+  def _wait_for_daemon(self, start=True, timeout_seconds=100):
+    """Waits for daemon to reach desired state in a polling loop.
+
+    Sleeps for 5s between polls.
+
+    Args:
+      start: bool. Indicates to wait for daemon to start up. If False,
+        indicates waiting for daemon to die.
+      timeout_seconds: int. Number of seconds to wait for the daemon to reach
+        the desired status.
+    Raises:
+      TimeoutError: if the daemon does not reach the desired state in time.
+    """
+    wanted_status = 'start' if start else 'stop'
+    sleep_period_seconds = 5
+    attempts = int(timeout_seconds / sleep_period_seconds)
+    for i in range(attempts):
+      if self._is_daemon_running() == start:
+        return
+      if i != attempts:
+        logging.info('Waiting for daemon to %s...', wanted_status)
+        time.sleep(sleep_period_seconds)
+
+    raise TimeoutError(f'Daemon did not {wanted_status} in time.')
 
   def _run_repair_command(self, output):
     """Scans `output` for a self-repair command to run and, if found, runs it.
@@ -91,6 +120,7 @@ class FfxRunner():
             ('--record', '--output-dir', self._log_manager.GetLogDirectory()))
       try:
         self.run_ffx(args, suppress_repair=True)
+        self._wait_for_daemon(start=True)
       except subprocess.CalledProcessError as cpe:
         return False  # Repair failed.
       return True  # Repair succeeded.
@@ -127,11 +157,15 @@ class FfxRunner():
       # supported.
       process = subprocess.Popen(command,
                                  stdout=subprocess.PIPE,
-                                 stderr=subprocess.STDOUT)
-      stdoutdata = process.communicate()[0].decode('utf-8')
+                                 stderr=subprocess.PIPE)
+      stdout_data, stderr_data = process.communicate()
+      stdout_data = stdout_data.decode('utf-8')
+      stderr_data = stderr_data.decode('utf-8')
       if check and process.returncode != 0:
-        raise subprocess.CalledProcessError(process.returncode, command,
-                                            stdoutdata)
+        # TODO(grt): Pass stdout and stderr as two args when p2 support is no
+        # longer needed.
+        raise subprocess.CalledProcessError(
+            process.returncode, command, '\n'.join((stdout_data, stderr_data)))
     except subprocess.CalledProcessError as cpe:
       if log_file:
         log_file.write('Process exited with code %d. Output: %s\n' %
@@ -146,20 +180,24 @@ class FfxRunner():
     if repair_succeeded:
       return self.run_ffx(args, check, suppress_repair=True)
 
-    stripped_stdout = stdoutdata.strip()
+    stripped_stdout = stdout_data.strip()
+    stripped_stderr = stderr_data.strip()
     if log_file:
-      if process.returncode != 0:
+      if process.returncode != 0 or stripped_stderr:
         log_file.write('Process exited with code %d.' % process.returncode)
+        if stripped_stderr:
+          log_file.write(' Stderr:\n%s\n' % stripped_stderr)
         if stripped_stdout:
-          log_file.write(' Output:\n%s\n' % stripped_stdout)
-        else:
+          log_file.write(' Stdout:\n%s\n' % stripped_stdout)
+        if not stripped_stderr and not stripped_stdout:
           log_file.write('\n')
       elif stripped_stdout:
         log_file.write('%s\n' % stripped_stdout)
     logging.debug(
-        'ffx command returned %d with %s', process.returncode,
-        ('output %s' % stripped_stdout if stripped_stdout else 'no output'))
-    return stdoutdata
+        'ffx command returned %d with %s%s', process.returncode,
+        ('output "%s"' % stripped_stdout if stripped_stdout else 'no output'),
+        (' and error "%s".' % stripped_stderr if stripped_stderr else '.'))
+    return stdout_data
 
   def open_ffx(self, args):
     """Runs `ffx` with some arguments.
@@ -241,6 +279,18 @@ class FfxRunner():
       # TODO(grt): Change to json.JSONDecodeError once p3 is supported.
       return []
 
+  def list_active_targets(self):
+    """Gets the list of targets and filters down to the targets that are active.
+
+    Returns:
+      An iterator over active FfxTargets.
+    """
+    targets = [
+        FfxTarget.from_target_list_json(self, json_target)
+        for json_target in self.list_targets()
+    ]
+    return filter(lambda target: target.get_ssh_address(), targets)
+
   def remove_stale_targets(self, address):
     """Removes any targets from ffx that are listening at a given address.
 
@@ -262,12 +312,14 @@ class FfxRunner():
     Yields:
       An FfxTarget for interacting with the target.
     """
-    target_identifier = format_host_port(address, port)
-    self.run_ffx(['target', 'add', target_identifier])
+    target_id = format_host_port(address, port)
+    # -n allows `target add` to skip waiting for the device to come up,
+    # as this can take longer than the default wait period.
+    self.run_ffx(['target', 'add', '-n', target_id])
     try:
-      yield FfxTarget(self, target_identifier)
+      yield FfxTarget.from_address(self, address, port)
     finally:
-      self.run_ffx(['target', 'remove', target_identifier], check=False)
+      self.run_ffx(['target', 'remove', target_id], check=False)
 
   def get_node_name(self, address, port):
     """Returns the node name for a target given its SSH address.
@@ -284,7 +336,8 @@ class FfxRunner():
     """
     for target in self.list_targets():
       if target['nodename'] and address in target['addresses']:
-        if FfxTarget(self, target['nodename']).get_ssh_address()[1] == port:
+        ssh_address = FfxTarget.from_target_list_json(target).get_ssh_address()
+        if ssh_address and ssh_address[1] == port:
           return target['nodename']
     raise Exception('Failed to determine node name for target at %s' %
                     format_host_port(address, port))
@@ -292,24 +345,57 @@ class FfxRunner():
   def daemon_stop(self):
     """Stops the ffx daemon."""
     self.run_ffx(['daemon', 'stop'], check=False, suppress_repair=True)
+    # Daemon should stop at this point.
+    self._wait_for_daemon(start=False)
 
 
 class FfxTarget():
   """A helper to run `ffx` commands for a specific target."""
 
-  def __init__(self, ffx_runner, target_identifier):
+  @classmethod
+  def from_address(cls, ffx_runner, address, port=None):
     """Args:
       ffx_runner: The runner to use to run ffx.
-      target_identifier: The target's node name or addr:port string.
+      address: The target's address.
+      port: The target's port, defaults to None in which case it will target
+            the first device at the specified address
+    """
+    return cls(ffx_runner, format_host_port(address, port) if port else address)
+
+  @classmethod
+  def from_node_name(cls, ffx_runner, node_name):
+    """Args:
+      ffx_runner: The runner to use to run ffx.
+      node_name: The target's node name.
+    """
+    return cls(ffx_runner, node_name)
+
+  @classmethod
+  def from_target_list_json(cls, ffx_runner, json_target):
+    """Args:
+      ffx_runner: The runner to use to run ffx.
+      json_target: the json dict as returned from `ffx list targets`
+    """
+    # Targets seen via `fx serve-remote` frequently have no name, so fall back
+    # to using the first address.
+    if json_target['nodename'].startswith('<unknown'):
+      return cls.from_address(ffx_runner, json_target['addresses'][0])
+    return cls.from_node_name(ffx_runner, json_target['nodename'])
+
+  def __init__(self, ffx_runner, target_id):
+    """Args:
+      ffx_runner: The runner to use to run ffx.
+      target_id: The target's node name or addr:port string.
     """
     self._ffx_runner = ffx_runner
-    self._target_args = ('--target', target_identifier)
+    self._target_id = target_id
+    self._target_args = ('--target', target_id)
 
   def format_runner_options(self):
     """Returns a string holding options suitable for use with the runner scripts
     to run tests on this target."""
     try:
-      # First try extracting host:port from the target_identifier.
+      # First try extracting host:port from the target_id.
       return '-d --host %s --port %d' % parse_host_port(self._target_args[1])
     except ValueError:
       # Must be a simple node name.
@@ -332,15 +418,15 @@ class FfxTarget():
     """Returns the host and port of the target's SSH address
 
     Returns:
-      A tuple of a host address string and a port number integer.
-
-    Raises:
-      subprocess.CalledProcessError if the address cannot be obtained.
-      ValueError if `ffx get-ssh-address` outputs an unexpected value.
+      A tuple of a host address string and a port number integer,
+        or None if there was an exception
     """
     command = list(self._target_args)
     command.extend(('target', 'get-ssh-address'))
-    return parse_host_port(self._ffx_runner.run_ffx(command))
+    try:
+      return parse_host_port(self._ffx_runner.run_ffx(command))
+    except:
+      return None
 
   def open_ffx(self, command):
     """Runs `ffx` for the target with some arguments.
@@ -352,6 +438,12 @@ class FfxTarget():
     args = list(self._target_args)
     args.extend(command)
     return self._ffx_runner.open_ffx(args)
+
+  def __str__(self):
+    return self._target_id
+
+  def __repr__(self):
+    return self._target_id
 
 
 # TODO(grt): Derive from contextlib.AbstractContextManager when p3 is supported.
@@ -372,18 +464,14 @@ class FfxSession():
     """
     self._log_manager = log_manager
     self._ffx = FfxRunner(log_manager)
-    self._structured_output_config = None
     self._own_output_dir = False
     self._output_dir = None
     self._run_summary = None
     self._suite_summary = None
     self._custom_artifact_directory = None
+    self._debug_data_directory = None
 
   def __enter__(self):
-    # Enable experimental structured output for ffx.
-    self._structured_output_config = self._ffx.scoped_config(
-        'test.experimental_structured_output', 'true')
-    self._structured_output_config.__enter__()
     if self._log_manager.IsLoggingEnabled():
       # Use a subdir of the configured log directory to hold test outputs.
       self._output_dir = os.path.join(self._log_manager.GetLogDirectory(),
@@ -408,9 +496,6 @@ class FfxSession():
       shutil.rmtree(self._output_dir, ignore_errors=True)
       self._own_output_dir = False
     self._output_dir = None
-    # Restore the previous experimental structured output setting.
-    self._structured_output_config.__exit__(exc_type, exc_val, exc_tb)
-    self._structured_output_config = None
     return False
 
   def get_output_dir(self):
@@ -428,8 +513,8 @@ class FfxSession():
       A subprocess.Popen object.
     """
     command = [
-        'test', 'run', '--output-directory', self._output_dir, component_uri,
-        '--'
+        '--config', 'test.experimental_structured_output=false', 'test', 'run',
+        '--output-directory', self._output_dir, component_uri, '--'
     ]
     command.extend(package_args)
     return ffx_target.open_ffx(command)
@@ -459,47 +544,36 @@ class FfxSession():
                     str(value_error))
       return
 
-    assert self._run_summary['version'] == '0', \
+    assert self._run_summary['schema_id'] == RUN_SUMMARY_SCHEMA, \
       'Unsupported version found in %s' % run_summary_path
 
-    # There should be precisely one suite for the test that ran. Find and parse
-    # its file.
-    suite_summary_filename = self._run_summary.get('suites',
-                                                   [{}])[0].get('summary')
-    if not suite_summary_filename:
-      logging.error('Failed to find suite zero\'s summary filename in %s',
-                    run_summary_path)
-      return
-    suite_summary_path = os.path.join(self._output_dir, suite_summary_filename)
-    try:
-      with open(suite_summary_path) as suite_summary_file:
-        self._suite_summary = json.load(suite_summary_file)
-    except IOError as io_error:
-      logging.error('Error reading suite summary file: %s', str(io_error))
-      return
-    except ValueError as value_error:
-      logging.error('Error parsing suite summary file %s: %s',
-                    suite_summary_path, str(value_error))
-      return
+    run_artifact_dir = self._run_summary.get('data', {})['artifact_dir']
+    for artifact_path, artifact in self._run_summary.get(
+        'data', {})['artifacts'].items():
+      if artifact['artifact_type'] == 'DEBUG':
+        self._debug_data_directory = os.path.join(self._output_dir,
+                                                  run_artifact_dir,
+                                                  artifact_path)
+        break
 
-    assert self._suite_summary['version'] == '0', \
-      'Unsupported version found in %s' % suite_summary_path
+    # There should be precisely one suite for the test that ran.
+    self._suite_summary = self._run_summary.get('data', {}).get('suites',
+                                                                [{}])[0]
 
     # Get the top-level directory holding all artifacts for this suite.
     artifact_dir = self._suite_summary.get('artifact_dir')
     if not artifact_dir:
       logging.error('Failed to find suite\'s artifact_dir in %s',
-                    suite_summary_path)
+                    run_summary_path)
       return
 
-    # Get the path corresponding to the CUSTOM artifact.
+    # Get the path corresponding to artifacts
     for artifact_path, artifact in self._suite_summary['artifacts'].items():
-      if artifact['artifact_type'] != 'CUSTOM':
-        continue
-      self._custom_artifact_directory = os.path.join(self._output_dir,
-                                                     artifact_dir,
-                                                     artifact_path)
-      break
+      if artifact['artifact_type'] == 'CUSTOM':
+        self._custom_artifact_directory = os.path.join(self._output_dir,
+                                                       artifact_dir,
+                                                       artifact_path)
+        break
 
   def get_custom_artifact_directory(self):
     """Returns the full path to the directory holding custom artifacts emitted
@@ -507,6 +581,13 @@ class FfxSession():
     """
     self._parse_test_outputs()
     return self._custom_artifact_directory
+
+  def get_debug_data_directory(self):
+    """Returns the full path to the directory holding custom artifacts emitted
+    by the test, or None if the path cannot be determined.
+    """
+    self._parse_test_outputs()
+    return self._debug_data_directory
 
 
 def make_arg_parser():

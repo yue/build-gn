@@ -1,4 +1,4 @@
-// Copyright 2015 The Chromium Authors. All rights reserved.
+// Copyright 2015 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -30,10 +30,15 @@ char kLSanDefaultSuppressions[] =
     // suppression works. http://crbug.com/605286
     "leak:__strdup\n"
 
-    // Leaks in Nvidia's libGL.
+    // Leaks in Nvidia's GL and Vulkan drivers.
     "leak:libGL.so\n"
     "leak:libGLX_nvidia.so\n"
+    "leak:libnvidia-cbl.so\n"
+    "leak:libnvidia-fatbinaryloader.so\n"
     "leak:libnvidia-glcore.so\n"
+    "leak:libnvidia-rtcore.so\n"
+    "leak:nvidia0\n"
+    "leak:nvidiactl\n"
 
     // XRandR has several one time leaks.
     "leak:libxrandr\n"
@@ -53,6 +58,9 @@ char kLSanDefaultSuppressions[] =
 
     // Leak in libnssutil. crbug.com/1290634
     "leak:libnssutil3\n"
+
+    // Suppress leaks from unknown third party modules. http://anglebug.com/6937
+    "leak:<unknown module>\n"
 
     // ================ Leaks in Chromium code ================
     // PLEASE DO NOT ADD SUPPRESSIONS FOR NEW LEAKS.
@@ -85,7 +93,7 @@ char kLSanDefaultSuppressions[] =
     // Suppress leak in SurfaceDrawContext. crbug.com/1265033
     "leak:skgpu::v1::SurfaceDrawContext::drawGlyphRunList\n"
     // Suppress leak in BluetoothServerSocket. crbug.com/1278970
-    "leak:location::nearby::chrome::BluetoothServerSocket::"
+    "leak:nearby::chrome::BluetoothServerSocket::"
     "BluetoothServerSocket\n"
     // Suppress leak in NearbyConnectionBrokerImpl. crbug.com/1279578
     "leak:ash::secure_channel::NearbyConnectionBrokerImpl\n"

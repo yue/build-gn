@@ -1,12 +1,9 @@
-# Copyright 2014 The Chromium Authors. All rights reserved.
+# Copyright 2014 The Chromium Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-# TODO(crbug.com/1259122): Remove //build/config/sanitizers/sanitizers.gni when
-# Chromium Clang ship with a catalyst version of the compiler runtime.
-
 import("//build/config/ios/ios_sdk.gni")
-import("//build/config/sanitizers/sanitizers.gni")
+import("//build/toolchain/apple/toolchain.gni")
 import("//build/toolchain/goma.gni")
 import("//build/toolchain/rbe.gni")
 import("//build/toolchain/toolchain.gni")
@@ -65,9 +62,22 @@ config("compiler") {
     "5",
   ]
 
-  # Without this, the constructors and destructors of a C++ object inside
-  # an Objective C struct won't be called, which is very bad.
-  cflags_objcc = [ "-fobjc-call-cxx-cdtors" ]
+  cflags_objcc = [
+    # Without this, the constructors and destructors of a C++ object inside
+    # an Objective C struct won't be called, which is very bad.
+    "-fobjc-call-cxx-cdtors",
+
+    # When using -std=c++20 or higher, clang automatically returns true for
+    # `__has_feature(modules)` as it enables cxx modules. This is problematic
+    # because Objective-C code uses this to detect whether `@import` can be
+    # used (this feature is also named modules).
+    #
+    # Since Chromium does not yet enable cxx modules, nor clang modules,
+    # force disable the cxx modules, which cause `__has_features(modules)`
+    # to return false unless clang modules are explicitly enabled.
+    "-Xclang",
+    "-fno-cxx-modules",
+  ]
 
   ldflags = common_flags
 }
@@ -111,65 +121,9 @@ config("runtime_library") {
     ]
   }
 
-  if (enable_ios_bitcode) {
-    if (is_debug) {
-      common_flags += [ "-fembed-bitcode-marker" ]
-    } else {
-      common_flags += [ "-fembed-bitcode" ]
-    }
-  }
-
   asmflags = common_flags
   cflags = common_flags
   ldflags = common_flags
-
-  # TODO(crbug.com/1223481): Temporarily use a different
-  # libclang_rt.iossim.a for arm64 simulator builds. This can be
-  # removed when an arm64 slice is added to upstream Clang.
-  if (target_environment == "simulator" && current_cpu == "arm64") {
-    if (xcode_version_int >= 1300 && xcode_version_int <= 1321) {
-      _xcode_clang_version = "13.0.0"
-    } else if (xcode_version_int == 1330) {
-      _xcode_clang_version = "13.1.6"
-    } else {
-      assert(false)
-    }
-    ldflags += [
-      "-lSystem",
-      rebase_path("$ios_toolchains_path/usr/lib/clang/" + _xcode_clang_version +
-                      "/lib/darwin/libclang_rt.iossim.a",
-                  root_build_dir),
-      "-nodefaultlibs",
-    ]
-  }
-
-  # TODO(crbug.com/1259122): Temporarily use a different libclang_rt.osx.a
-  # for catalyst build. This can be removed when a catalyst slice is added
-  # to upstream Clang.
-  if (target_environment == "catalyst") {
-    if (xcode_version_int >= 1300 && xcode_version_int <= 1321) {
-      _xcode_clang_version = "13.0.0"
-    } else if (xcode_version_int == 1330) {
-      _xcode_clang_version = "13.1.6"
-    } else {
-      assert(false)
-    }
-    ldflags += [
-      "-lSystem",
-      rebase_path("$ios_toolchains_path/usr/lib/clang/" + _xcode_clang_version +
-                      "/lib/darwin/libclang_rt.osx.a",
-                  root_build_dir),
-      "-nodefaultlibs",
-    ]
-
-    # UBSAn runtime library is also required when using libfuzzer.
-    if (use_libfuzzer) {
-      ldflags += [ rebase_path(
-              "$ios_toolchains_path/usr/lib/clang/" + _xcode_clang_version +
-                  "/lib/darwin/libclang_rt.ubsan_osx.a",
-              root_build_dir) ]
-    }
-  }
 }
 
 config("ios_executable_flags") {
@@ -210,30 +164,34 @@ config("ios_dynamic_flags") {
 
   # The path to the Swift compatibility libraries (required to run code built
   # with version N of the SDK on older version of the OS) is relative to the
-  # toolchains directory and changes with the environment.
-  _swift_compatibility_libs_dir_prefix = "$ios_toolchains_path/usr/lib/swift"
+  # toolchains directory and changes with the environment when using the
+  # system toolchain. When using the hermetic swift toolchain instead, those
+  # libraries are relative to $swift_toolchain_path.
+  if (swift_toolchain_path == "") {
+    _swift_compatibility_libs_prefix = ios_toolchains_path
+  } else {
+    _swift_compatibility_libs_prefix = swift_toolchain_path
+  }
+
   if (target_environment == "simulator") {
-    _swift_compatibility_libs_dir =
-        "$_swift_compatibility_libs_dir_prefix/iphonesimulator"
+    _swift_compatibility_libs_suffix = "iphonesimulator"
   } else if (target_environment == "device") {
-    _swift_compatibility_libs_dir =
-        "$_swift_compatibility_libs_dir_prefix/iphoneos"
+    _swift_compatibility_libs_suffix = "iphoneos"
   } else if (target_environment == "catalyst") {
     # The Swift compatibility libraries have changed location starting with
     # Xcode 13.0, so check the version of Xcode when deciding which path to
     # use.
     if (xcode_version_int >= 1300) {
-      _swift_compatibility_libs_dir =
-          "$_swift_compatibility_libs_dir_prefix/macosx"
+      _swift_compatibility_libs_suffix = "macosx"
     } else {
-      _swift_compatibility_libs_dir =
-          "$_swift_compatibility_libs_dir_prefix/maccatalyst"
+      _swift_compatibility_libs_suffix = "maccatalyst"
     }
   }
 
   lib_dirs = [
     "$ios_sdk_path/usr/lib/swift",
-    _swift_compatibility_libs_dir,
+    "$_swift_compatibility_libs_prefix/usr/lib/swift/" +
+        "$_swift_compatibility_libs_suffix",
   ]
 
   # When building for catalyst, some Swift support libraries are in a
@@ -279,7 +237,7 @@ config("xctest_config") {
 }
 
 config("enable_swift_cxx_interop") {
-  swiftflags = [ "-enable-cxx-interop" ]
+  swiftflags = [ "-enable-experimental-cxx-interop" ]
 }
 
 group("xctest") {
@@ -330,7 +288,10 @@ action("xctest_runner_without_arm64e") {
     xcode_version,
   ]
 
+  # When running under ASan, the ASan runtime library must be packaged alongside
+  # the test runner binary.
+  deps = [ "//build/config/sanitizers:deps" ]
   if (use_system_xcode && (use_goma || use_remoteexec)) {
-    deps = [ ":copy_xctrunner_app" ]
+    deps += [ ":copy_xctrunner_app" ]
   }
 }

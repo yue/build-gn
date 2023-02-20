@@ -1,4 +1,4 @@
-# Copyright 2018 The Chromium Authors. All rights reserved.
+# Copyright 2018 The Chromium Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -11,7 +11,7 @@ import sys
 
 from common import GetHostArchFromPlatform
 
-BUILTIN_TARGET_NAMES = ['aemu', 'qemu', 'device', 'fvdl']
+BUILTIN_TARGET_NAMES = ['qemu', 'device', 'fvdl']
 
 
 def _AddTargetSpecificationArgs(arg_parser):
@@ -29,8 +29,8 @@ def _AddTargetSpecificationArgs(arg_parser):
   device_args.add_argument('--device',
                            default=None,
                            choices=BUILTIN_TARGET_NAMES + ['custom'],
-                           help='Choose to run on fvdl|aemu|qemu|device. '
-                           'By default, Fuchsia will run on AEMU on x64 '
+                           help='Choose to run on fvdl|qemu|device. '
+                           'By default, Fuchsia will run on Fvdl on x64 '
                            'hosts and QEMU on arm64 hosts. Alternatively, '
                            'setting to custom will require specifying the '
                            'subclass of Target class used via the '
@@ -44,8 +44,8 @@ def _AddTargetSpecificationArgs(arg_parser):
                            default=None,
                            help='Specify path to file that contains the '
                            'subclass of Target that will be used. Only '
-                           'needed if device specific operations such as '
-                           'paving is required.')
+                           'needed if device specific operations is '
+                           'required.')
 
 
 def _GetPathToBuiltinTarget(target_name):
@@ -112,9 +112,6 @@ def AddCommonArgs(arg_parser):
   package_args.add_argument(
       '--package-name',
       help='Name of the package to execute, defined in ' + 'package metadata.')
-  package_args.add_argument('--component-version',
-                            help='Component version of the package to execute',
-                            default='1')
 
   emu_args = arg_parser.add_argument_group('emu', 'General emulator arguments')
   emu_args.add_argument('--cpu-cores',

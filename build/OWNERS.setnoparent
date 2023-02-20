@@ -2,15 +2,15 @@
 # docs/code_reviews.md#owners-file-details for more details.
 
 # Overall project governance.
-file://ENG_REVIEW_OWNERS
+file://ATL_OWNERS
 
 # Third-party dependency review, see //docs/adding_to_third_party.md
 file://third_party/OWNERS
 
 # Security reviews
+file://build/fuchsia/SECURITY_OWNERS
 file://chromeos/SECURITY_OWNERS
 file://content/browser/SITE_ISOLATION_OWNERS
-file://fuchsia/SECURITY_OWNERS
 file://ipc/SECURITY_OWNERS
 file://net/base/SECURITY_OWNERS
 file://sandbox/linux/OWNERS
@@ -73,3 +73,13 @@ file://infra/config/groups/sheriff-rotations/CHROMIUM_OWNERS
 # Origin Trials owners are responsible for determining trials that need to be
 # completed manually.
 file://third_party/blink/common/origin_trials/OT_OWNERS
+
+# New notifiers added to //ash/constants/notifier_catalogs.h and 
+# //ash/constants/quick_settings_catalogs.h should be reviewed
+# by //ash/system owners to ensure that the correct notifier is being used.
+file://ash/system/OWNERS
+
+# WebUI surfaces are user visible and frequently are kept around indefinitely.
+# New WebUI additions should be reviewed by WebUI PLATFORM_OWNERS to ensure
+# they follow the guidance at https://www.chromium.org/developers/webui
+file://ui/webui/PLATFORM_OWNERS
