@@ -1,0 +1,64 @@
+name: build-gn
+
+on: push
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    continue-on-error: false
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-20.04, windows-2019, macos-11]
+        arch: [x64, arm64]
+        include:
+          - os: ubuntu-20.04
+            arch: x86
+          - os: ubuntu-20.04
+            arch: arm
+          - os: windows-2019
+            arch: x86
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Build
+        run: |
+          node scripts/bootstrap.js --target-cpu=x64
+          node scripts/build.js out/Release
+
+      - name: Create distribution
+        run: node scripts/create_dist.js
+
+      - name: Run tests
+        run: node scripts/test.js
+
+      - name: Upload
+        uses: actions/upload-artifact@v3
+        with:
+          path: |
+            out/Release/gn_*.zip
+          retention-days: 1
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: [build]
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download Files
+        uses: actions/download-artifact@v3
+
+      - name: Release
+        uses: softprops/action-gh-release@v0.1.15
+        with:
+          draft: true
+          name: build-gn ${{ github.ref_name }}
+          body: '## Changelog'
+          files: artifact/*.zip
