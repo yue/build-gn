@@ -40,6 +40,7 @@ const files =
   searchFiles('buildtools/third_party/libunwind/trunk/include')).concat(
   searchFiles('testing')).concat(
   searchFiles('tools/cfi')).concat(
+  searchFiles('tools/clang/scripts')).concat(
   searchFiles('tools/win')).concat(
   searchFiles('third_party/catapult')).concat(
   searchFiles('third_party/googletest'))
