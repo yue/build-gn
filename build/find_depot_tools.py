@@ -60,7 +60,8 @@ def add_depot_tools_to_path():
 DEPOT_TOOLS_PATH = add_depot_tools_to_path()
 
 # pylint: disable=W0611
-import breakpad
+# PATCH(build-gn): Trick to return the fake depot_tools path.
+# import breakpad
 
 
 def main():

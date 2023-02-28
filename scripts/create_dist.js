@@ -43,6 +43,7 @@ const files =
   searchFiles('tools/clang/scripts')).concat(
   searchFiles('tools/win')).concat(
   searchFiles('third_party/catapult')).concat(
+  searchFiles('third_party/depot_tools')).concat(
   searchFiles('third_party/googletest'))
 addFileToZip(gnzip, 'buildtools/deps_revisions.gni', '.')
 addFileToZip(gnzip, 'buildtools/third_party/libc++/BUILD.gn', '.')
