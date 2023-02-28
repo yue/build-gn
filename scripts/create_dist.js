@@ -44,6 +44,7 @@ const files =
   searchFiles('tools/win')).concat(
   searchFiles('third_party/catapult')).concat(
   searchFiles('third_party/googletest'))
+addFileToZip(gnzip, 'buildtools/deps_revisions.gni', '.')
 addFileToZip(gnzip, 'buildtools/third_party/libc++/BUILD.gn', '.')
 addFileToZip(gnzip, 'buildtools/third_party/libc++abi/BUILD.gn', '.')
 addFileToZip(gnzip, 'buildtools/third_party/libunwind/BUILD.gn', '.')
