@@ -307,7 +307,8 @@ def main():
   print('paths = ' + gn_helpers.ToGNString(env['PATH']))
   assert libpath_flags
   print('libpath_flags = ' + gn_helpers.ToGNString(libpath_flags))
-  if bool(int(os.environ.get('DEPOT_TOOLS_WIN_TOOLCHAIN', 1))) and win_sdk_path:
+  # PATCH(build-gn): Do not assume depot_tools by default.
+  if bool(int(os.environ.get('DEPOT_TOOLS_WIN_TOOLCHAIN', 0))) and win_sdk_path:
     print('libpath_lldlink_flags = ' +
           gn_helpers.ToGNString(q('/winsysroot:' + relflag(toolchain_root))))
   else:
