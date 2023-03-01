@@ -46,7 +46,10 @@ const files =
   searchFiles('third_party/depot_tools')).concat(
   searchFiles('third_party/googletest'))
 addFileToZip(gnzip, 'buildtools/deps_revisions.gni', '.')
+addFileToZip(gnzip, 'buildtools/third_party/eu-strip/bin/eu-strip', '.')
+addFileToZip(gnzip, 'buildtools/third_party/libc++/__config_site', '.')
 addFileToZip(gnzip, 'buildtools/third_party/libc++/BUILD.gn', '.')
+addFileToZip(gnzip, 'buildtools/third_party/libc++abi/cxa_demangle_stub.cc', '.')
 addFileToZip(gnzip, 'buildtools/third_party/libc++abi/BUILD.gn', '.')
 addFileToZip(gnzip, 'buildtools/third_party/libunwind/BUILD.gn', '.')
 for (let f of files) {

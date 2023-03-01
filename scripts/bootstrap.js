@@ -44,9 +44,6 @@ if (targetOs == 'linux') {
                     'clang_use_chrome_plugins=false')
   // Use sysroot.
   releaseConfig.push('use_sysroot=true')
-  // Link with libc++ statically.
-  releaseConfig.push('use_custom_libcxx=true')
-  releaseConfig.push('libcxx_is_shared=false')
 } else if (targetOs == 'mac') {
   commonConfig.push('mac_sdk_min="10.12"')
 }
