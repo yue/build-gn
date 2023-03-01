@@ -96,10 +96,9 @@ def ExpandWildcards(root, sub_dir):
   path = os.path.normpath(os.path.join(root, sub_dir))
   matches = glob.glob(path)
   # PATCH(build-gn): The CI machines may have multiple toolchains installed.
-  return matches[0]
-  if len(matches) != 1:
-    raise Exception('%s had %d matches - should be one' % (path, len(matches)))
-  return matches[0]
+  if len(matches) < 1:
+    raise Exception('%s had %d matches - should be one or more' % (path, len(matches)))
+  return matches[len(matches) - 1]
 
 
 def BuildRepackageFileList(src_dir):
