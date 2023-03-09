@@ -236,6 +236,10 @@ config("default_include_dirs") {
     "//",
     root_gen_dir,
   ]
+  # PATCH(build-gn): Search through bundled build and third_party dirs.
+  if (defined(chromium_config_dir)) {
+    include_dirs += [ chromium_config_dir ]
+  }
 }
 
 # Compiler instrumentation can introduce dependencies in DSOs to symbols in
