@@ -34,12 +34,12 @@ config("runtime_library") {
       # line, and build system rebuilds things when their commandline
       # changes). Nothing should ever read this define.
       # PATCH(build-gn): This breaks with custom sysroot scripts.
-      # sysroot_hash =
+      # sysroot_key =
       #     exec_script("//build/linux/sysroot_scripts/install-sysroot.py",
-      #                 [ "--print-hash=$current_cpu" ],
+      #                 [ "--print-key=$current_cpu" ],
       #                 "trim string",
       #                 [ "//build/linux/sysroot_scripts/sysroots.json" ])
-      # defines += [ "CR_SYSROOT_HASH=$sysroot_hash" ]
+      # defines += [ "CR_SYSROOT_KEY=$sysroot_key" ]
     }
     asmflags += sysroot_flags
     ldflags += sysroot_flags

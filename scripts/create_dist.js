@@ -32,19 +32,19 @@ const gnzip = new JSZip()
 const files =
   searchFiles('build_overrides').concat(
   searchFiles('build')).concat(
-  searchFiles('buildtools/third_party/libc++/trunk/src')).concat(
-  searchFiles('buildtools/third_party/libc++/trunk/include')).concat(
-  searchFiles('buildtools/third_party/libc++abi/trunk/src')).concat(
-  searchFiles('buildtools/third_party/libc++abi/trunk/include')).concat(
-  searchFiles('buildtools/third_party/libunwind/trunk/src')).concat(
-  searchFiles('buildtools/third_party/libunwind/trunk/include')).concat(
   searchFiles('testing')).concat(
   searchFiles('tools/cfi')).concat(
   searchFiles('tools/clang/scripts')).concat(
   searchFiles('tools/win')).concat(
   searchFiles('third_party/catapult')).concat(
   searchFiles('third_party/depot_tools')).concat(
-  searchFiles('third_party/googletest'))
+  searchFiles('third_party/googletest')).concat(
+  searchFiles('third_party/libc++/src/src')).concat(
+  searchFiles('third_party/libc++/src/include')).concat(
+  searchFiles('third_party/libc++abi/src/src')).concat(
+  searchFiles('third_party/libc++abi/src/include')).concat(
+  searchFiles('third_party/libunwind/src/src')).concat(
+  searchFiles('third_party/libunwind/src/include'))
 addFileToZip(gnzip, 'buildtools/deps_revisions.gni', '.')
 addFileToZip(gnzip, 'buildtools/third_party/eu-strip/bin/eu-strip', '.')
 addFileToZip(gnzip, 'buildtools/third_party/libc++/__config_site', '.')

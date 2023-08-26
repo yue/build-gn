@@ -7,12 +7,12 @@
 [submodule "tools/gn"]
 	path = tools/gn
 	url = https://github.com/yue/gn
-[submodule "buildtools/third_party/libc++/trunk"]
-	path = buildtools/third_party/libc++/trunk
-	url = https://chromium.googlesource.com/external/github.com/llvm/llvm-project/libcxx.git
-[submodule "buildtools/third_party/libc++abi/trunk"]
-	path = buildtools/third_party/libc++abi/trunk
-	url = https://chromium.googlesource.com/external/github.com/llvm/llvm-project/libcxxabi.git
-[submodule "buildtools/third_party/libunwind/trunk"]
-	path = buildtools/third_party/libunwind/trunk
-	url = https://chromium.googlesource.com/external/github.com/llvm/llvm-project/libunwind.git
+[submodule "third_party/libc++/src"]
+	path = third_party/libc++/src
+	url = https://chromium.googlesource.com/external/github.com/llvm/llvm-project/libcxx
+[submodule "third_party/libc++abi/src"]
+	path = third_party/libc++abi/src
+	url = https://chromium.googlesource.com/external/github.com/llvm/llvm-project/libcxxabi
+[submodule "third_party/libunwind/src"]
+	path = third_party/libunwind/src
+	url = https://chromium.googlesource.com/external/github.com/llvm/llvm-project/libunwind
