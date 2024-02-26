@@ -8,6 +8,7 @@ const {targetCpu, targetOs, execSync, spawnSync} = require('./common')
 
 // Get the arch of sysroot.
 let sysrootArch = {
+  arm64: 'arm64',
   x64: 'amd64',
   x86: 'i386',
 }[targetCpu]

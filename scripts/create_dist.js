@@ -120,5 +120,8 @@ function searchFiles(dir, list = []) {
 
 function strip(file) {
   // TODO(zcbenz): Copy the debug symbols out before striping.
-  execSync(`strip ${file}`)
+  if (targetCpu == 'x64')
+    execSync(`strip ${file}`)
+  else
+    execSync(`aarch64-linux-gnu-strip ${file}`)
 }

@@ -33,9 +33,6 @@ async function main() {
 }
 
 function runTests(error) {
-  if (targetCpu !== 'x64' && targetOs !== 'win') {
-    return
-  }
   for (const project of fs.readdirSync('examples')) {
     runEachTest(project, path.resolve('examples', project))
   }

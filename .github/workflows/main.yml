@@ -10,33 +10,37 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-22.04, windows-2022, macos-12]
-        arch: [x64, arm64]
+        os: [ubuntu-22.04, windows-2022, macos-14]
+        arch: [x64]
         include:
           - os: ubuntu-22.04
-            arch: x86
-          - os: ubuntu-22.04
-            arch: arm
-          - os: windows-2022
-            arch: x86
+            arch: arm64
+          - os: macos-14
+            arch: arm64
 
     steps:
+      - name: Install Linux Arm Toolchains
+        if: runner.os == 'linux' && matrix.arch == 'arm64'
+        run: sudo apt install -y binutils-aarch64-linux-gnu
+
+      - name: Use Python 3.11
+        uses: actions/setup-python@v3
+        with:
+          python-version: '3.11'
+
       - name: Checkout
         uses: actions/checkout@v3
 
-      - uses: actions/setup-python@v4
-        with:
-          python-version: 3.x
-
       - name: Build
         run: |
-          node scripts/bootstrap.js --target-cpu=x64
+          node scripts/bootstrap.js --target-cpu=${{ matrix.arch }}
           node scripts/build.js out/Release
 
       - name: Create distribution
         run: node scripts/create_dist.js
 
       - name: Run tests
+        if: runner.arch == matrix.arch
         run: node scripts/test.js
 
       - name: Upload
