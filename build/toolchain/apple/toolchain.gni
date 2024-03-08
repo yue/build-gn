@@ -286,7 +286,11 @@ template("single_apple_toolchain") {
 
         default_output_extension = ".a"
         output_prefix = "lib"
-        default_output_dir = "{{root_out_dir}}"
+
+        # Static libraries go in the target out directory by default so we can
+        # generate different targets with the same name and not have them
+        # collide.
+        default_output_dir = "{{target_out_dir}}"
         description = "RUST(STATICLIB) {{output}}"
         outputs = [ libname ]
 
@@ -311,7 +315,11 @@ template("single_apple_toolchain") {
 
         # This is prefixed unconditionally in `rlibname`.
         # output_prefix = "lib"
-        default_output_dir = "{{root_out_dir}}"
+
+        # Static libraries go in the target out directory by default so we can
+        # generate different targets with the same name and not have them
+        # collide.
+        default_output_dir = "{{target_out_dir}}"
         description = "RUST {{output}}"
         outputs = [ rlibname ]
 
@@ -771,6 +779,7 @@ template("single_apple_toolchain") {
             "-depfile {{target_out_dir}}/{{module_name}}.d " +
             "-bridge-header {{bridge_header}} $_extra_flags " +
             "{{swiftflags}} {{include_dirs}} {{module_dirs}} {{inputs}}"
+        description = "SWIFT {{output}}"
       }
     }
 
@@ -856,6 +865,7 @@ template("apple_toolchain") {
         use_clang_coverage = false
         use_sanitizer_coverage = false
         generate_linker_map = false
+        use_thin_lto = false
       }
     }
   }

@@ -21,9 +21,6 @@ declare_args() {
   # is empty, default sysroot is calculated.
   # PATCH(build-gn): Don't use sysroot by default.
   use_sysroot = false
-
-  # PATCH(build-gn): Allow controlling debian platform.
-  debian_platform = "bullseye"
 }
 
 if (sysroot == "") {
@@ -39,17 +36,17 @@ if (sysroot == "") {
     # By default build against a sysroot image downloaded from Cloud Storage
     # during gclient runhooks.
     if (current_cpu == "x64") {
-      sysroot = "$target_sysroot_dir/debian_${debian_platform}_amd64-sysroot"
+      sysroot = "$target_sysroot_dir/debian_bullseye_amd64-sysroot"
     } else if (current_cpu == "x86") {
-      sysroot = "$target_sysroot_dir/debian_${debian_platform}_i386-sysroot"
+      sysroot = "$target_sysroot_dir/debian_bullseye_i386-sysroot"
     } else if (current_cpu == "mipsel") {
-      sysroot = "$target_sysroot_dir/debian_${debian_platform}_mips-sysroot"
+      sysroot = "$target_sysroot_dir/debian_bullseye_mipsel-sysroot"
     } else if (current_cpu == "mips64el") {
-      sysroot = "$target_sysroot_dir/debian_${debian_platform}_mips64el-sysroot"
+      sysroot = "$target_sysroot_dir/debian_bullseye_mips64el-sysroot"
     } else if (current_cpu == "arm") {
-      sysroot = "$target_sysroot_dir/debian_${debian_platform}_arm-sysroot"
+      sysroot = "$target_sysroot_dir/debian_bullseye_armhf-sysroot"
     } else if (current_cpu == "arm64") {
-      sysroot = "$target_sysroot_dir/debian_${debian_platform}_arm64-sysroot"
+      sysroot = "$target_sysroot_dir/debian_bullseye_arm64-sysroot"
     } else {
       assert(false, "No linux sysroot for cpu: $target_cpu")
     }

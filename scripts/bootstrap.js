@@ -24,7 +24,6 @@ execSync('git submodule update --init --recursive')
 
 const commonConfig = [
   'use_jumbo_build=true',
-  'use_cxx17=true',
   'treat_warnings_as_errors=false',
   `target_cpu="${targetCpu}"`,
 ]
