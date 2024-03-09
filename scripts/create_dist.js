@@ -47,6 +47,7 @@ const files =
   searchFiles('third_party/libunwind/src/include'))
 addFileToZip(gnzip, 'buildtools/deps_revisions.gni', '.')
 addFileToZip(gnzip, 'buildtools/third_party/eu-strip/bin/eu-strip', '.')
+addFileToZip(gnzip, 'buildtools/third_party/libc++/__assertion_handler', '.')
 addFileToZip(gnzip, 'buildtools/third_party/libc++/__config_site', '.')
 addFileToZip(gnzip, 'buildtools/third_party/libc++/BUILD.gn', '.')
 addFileToZip(gnzip, 'buildtools/third_party/libc++abi/cxa_demangle_stub.cc', '.')

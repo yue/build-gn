@@ -43,6 +43,10 @@ function runEachTest(project, projectPath) {
   const outdir = path.resolve('out', 'Test')
   fs.emptyDirSync(outdir)
 
+  if (projectPath.endsWith('libcxx')) {
+    execSync(`python3 ${path.join(tmppath, 'gn/tools/clang/scripts/update.py')}`)
+  }
+
   const gn = path.join(tmppath, 'gn', 'gn')
   execSync(`${gn} gen ${outdir}`, {cwd: projectPath})
 
