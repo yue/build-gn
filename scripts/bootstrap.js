@@ -47,7 +47,7 @@ if (targetOs == 'linux') {
   // Link with libc++ statically.
   releaseConfig.push('use_custom_libcxx=true')
 } else if (targetOs == 'mac') {
-  commonConfig.push('mac_sdk_min="10.12"')
+  commonConfig.push('mac_sdk_min="11"')
 }
 
 gen('out/Debug', debugConfig)

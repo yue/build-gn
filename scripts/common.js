@@ -31,7 +31,7 @@ process.env.PATH = `${binaries_dir}${path.delimiter}${process.env.PATH}`
 const version = String(execSync('git describe --always --tags')).trim()
 
 // Get target_cpu from args.gn.
-let targetCpu = 'x64'
+let targetCpu = process.arch
 if (fs.existsSync('out/Release/args.gn')) {
   const content = String(fs.readFileSync('out/Release/args.gn'))
   const match = content.match(/target_cpu = "(.*)"/)
