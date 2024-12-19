@@ -2566,8 +2566,11 @@ config("optimize") {
     # consistency with the other platforms.
     cflags = [
                "/O2",
-               "/clang:-O2",
              ] + common_optimize_on_cflags
+    # PATCH(build-gn): Support non-clang build.
+    if (is_clang) {
+      cflags += [ "/clang:-O2" ]
+    }
 
     # The `-O3` for clang turns on extra optimizations compared to the standard
     # `-O2`. But for rust, `-Copt-level=3` is the default and is thus reliable
