@@ -36,6 +36,7 @@ const files =
   searchFiles('tools/cfi')).concat(
   searchFiles('tools/clang/scripts')).concat(
   searchFiles('tools/win')).concat(
+  searchFiles('third_party/abseil-cpp')).concat(
   searchFiles('third_party/catapult')).concat(
   searchFiles('third_party/depot_tools')).concat(
   searchFiles('third_party/googletest')).concat(
@@ -44,7 +45,8 @@ const files =
   searchFiles('third_party/libc++abi/src/src')).concat(
   searchFiles('third_party/libc++abi/src/include')).concat(
   searchFiles('third_party/libunwind/src/src')).concat(
-  searchFiles('third_party/libunwind/src/include'))
+  searchFiles('third_party/libunwind/src/include')).concat(
+  searchFiles('third_party/re2'))
 addFileToZip(gnzip, 'buildtools/deps_revisions.gni', '.')
 addFileToZip(gnzip, 'buildtools/third_party/eu-strip/bin/eu-strip', '.')
 addFileToZip(gnzip, 'buildtools/third_party/libc++/__assertion_handler', '.')

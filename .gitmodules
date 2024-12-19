@@ -16,3 +16,9 @@
 [submodule "third_party/libunwind/src"]
 	path = third_party/libunwind/src
 	url = https://chromium.googlesource.com/external/github.com/llvm/llvm-project/libunwind
+[submodule "third_party/abseil-cpp"]
+	path = third_party/abseil-cpp
+	url = https://chromium.googlesource.com/chromium/src/third_party/abseil-cpp
+[submodule "third_party/re2/src"]
+	path = third_party/re2/src
+	url = https://github.com/google/re2
