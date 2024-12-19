@@ -32,7 +32,8 @@ config("gtest_config") {
     # Use Abseil, but without flags support: Abseil flags uses the
     # `FastTypeId<T>()` pattern internally, which is known to be broken in
     # subtle ways in the component build.
-    "GTEST_HAS_ABSL",
+    # PATCH(build-gn): No abseil.
+    # "GTEST_HAS_ABSL",
     "GTEST_NO_ABSL_FLAGS",
   ]
 
@@ -47,8 +48,9 @@ config("gtest_config") {
   }
 
   configs = [
-    "//third_party/abseil-cpp:absl_include_config",
-    "//third_party/re2:re2_config",
+    # PATCH(build-gn): No abseil.
+    # "//third_party/abseil-cpp:absl_include_config",
+    # "//third_party/re2:re2_config",
   ]
 }
 
@@ -134,8 +136,8 @@ source_set("gtest") {
   defines = []
 
   # googletest only needs `absl`, but this makes gn check happier.
-  deps = [ "//third_party/abseil-cpp:absl_full" ]
-  public_deps = [ "//third_party/re2" ]
+  # PATCH(build-gn): No abseil.
+  deps = []
   if (is_nacl || !build_with_chromium) {
     defines += [ "GTEST_DISABLE_PRINT_STACK_TRACE" ]
     sources -= [
@@ -192,7 +194,8 @@ source_set("gmock") {
   ]
 
   # googlemock only needs `absl`, but this makes gn check happier.
-  deps = [ "//third_party/abseil-cpp:absl_full" ]
+  # PATCH(build-gn): No abseil.
+  # deps = [ "//third_party/abseil-cpp:absl_full" ]
 
   public_deps = [ ":gtest" ]
   public_configs = [ ":gmock_config" ]

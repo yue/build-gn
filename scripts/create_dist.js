@@ -37,7 +37,6 @@ const files =
   searchFiles('tools/cfi')).concat(
   searchFiles('tools/clang/scripts')).concat(
   searchFiles('tools/win')).concat(
-  searchFiles('third_party/abseil-cpp')).concat(
   searchFiles('third_party/catapult')).concat(
   searchFiles('third_party/depot_tools')).concat(
   searchFiles('third_party/googletest')).concat(
@@ -47,8 +46,7 @@ const files =
   searchFiles('third_party/libc++abi/src/include')).concat(
   searchFiles('third_party/libunwind/src/src')).concat(
   searchFiles('third_party/libunwind/src/include')).concat(
-  searchFiles('third_party/llvm-libc')).concat(
-  searchFiles('third_party/re2'))
+  searchFiles('third_party/llvm-libc'))
 addFileToZip(gnzip, 'buildtools/deps_revisions.gni', '.')
 for (let f of files) {
   addFileToZip(gnzip, f, '.')
