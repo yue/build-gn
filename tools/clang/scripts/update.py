@@ -254,7 +254,8 @@ def UpdatePackage(package_name, host_os, dir=LLVM_BUILD_DIR):
   assert package_file is not None
 
   # TODO(hans): Create a clang-win-runtime package and use separate DEPS hook.
-  target_os = []
+  # PATCH(build-gn): Provide a default target_os.
+  target_os = [host_os]
   if package_name == 'clang':
     try:
       GCLIENT_CONFIG = os.path.join(os.path.dirname(CHROMIUM_DIR), '.gclient')

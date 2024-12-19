@@ -33,7 +33,9 @@ async function main() {
 }
 
 function runTests(error) {
-  for (const project of fs.readdirSync('examples')) {
+  const projects = process.argv.length > 2 ? process.argv.slice(2)
+                                           : fs.readdirSync('examples')
+  for (const project of projects) {
     runEachTest(project, path.resolve('examples', project))
   }
 }

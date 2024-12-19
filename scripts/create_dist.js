@@ -32,6 +32,7 @@ const gnzip = new JSZip()
 const files =
   searchFiles('build_overrides').concat(
   searchFiles('build')).concat(
+  searchFiles('buildtools/third_party')).concat(
   searchFiles('testing')).concat(
   searchFiles('tools/cfi')).concat(
   searchFiles('tools/clang/scripts')).concat(
@@ -46,15 +47,9 @@ const files =
   searchFiles('third_party/libc++abi/src/include')).concat(
   searchFiles('third_party/libunwind/src/src')).concat(
   searchFiles('third_party/libunwind/src/include')).concat(
+  searchFiles('third_party/llvm-libc')).concat(
   searchFiles('third_party/re2'))
 addFileToZip(gnzip, 'buildtools/deps_revisions.gni', '.')
-addFileToZip(gnzip, 'buildtools/third_party/eu-strip/bin/eu-strip', '.')
-addFileToZip(gnzip, 'buildtools/third_party/libc++/__assertion_handler', '.')
-addFileToZip(gnzip, 'buildtools/third_party/libc++/__config_site', '.')
-addFileToZip(gnzip, 'buildtools/third_party/libc++/BUILD.gn', '.')
-addFileToZip(gnzip, 'buildtools/third_party/libc++abi/cxa_demangle_stub.cc', '.')
-addFileToZip(gnzip, 'buildtools/third_party/libc++abi/BUILD.gn', '.')
-addFileToZip(gnzip, 'buildtools/third_party/libunwind/BUILD.gn', '.')
 for (let f of files) {
   addFileToZip(gnzip, f, '.')
 }
