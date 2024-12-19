@@ -38,23 +38,35 @@ def _gn_lines(output_dir, path):
             else:
                 yield line
 
+
 def _use_reclient(outdir):
+  use_remoteexec = False
+  use_reclient = None
   args_gn = os.path.join(outdir, 'args.gn')
   if not os.path.exists(args_gn):
     return False
   for line in _gn_lines(outdir, args_gn):
     line_without_comment = line.split('#')[0]
-    if re.search(r"(^|\s)(use_remoteexec)\s*=\s*true($|\s)",
-                 line_without_comment):
-      return True
-  return False
+    m = re.match(r"(^|\s*)use_remoteexec\s*=\s*(true|false)\s*$",
+                 line_without_comment)
+    if m:
+      use_remoteexec = m.group(2) == 'true'
+      continue
+    m = re.match(r"(^|\s*)use_reclient\s*=\s*(true|false)\s*$",
+                 line_without_comment)
+    if m:
+      use_reclient = m.group(2) == 'true'
+  if use_reclient == None:
+      use_reclient = use_remoteexec
+  return use_reclient
+
 
 def main():
   parser = argparse.ArgumentParser()
-  parser.add_argument('--source', action='append',
+  parser.add_argument('source', nargs='+',
     help=('The source file being analyzed.'
-          'Multiple --source arguments can be passed in order to batch '
-          'process is desired. '))
+          'Multiple source arguments can be passed in order to batch '
+          'process if desired.'))
   parser.add_argument('--perform-build', action='store_true',
     help=('If specified, actually build the target, including any generated '
           'prerequisite files. '
@@ -62,32 +74,65 @@ def main():
           'the GeneratedFile results will only be returned if a build has '
           'been previously completed, and may be stale.'))
   parser.add_argument('--out-dir',
-    help=('Output directory, containing  args.gn, which specifies the build '
+    help=('Output directory, containing args.gn, which specifies the build '
           'configuration.'))
+  parser.add_argument('--log-dir', help=('Directory to save log files to.'))
   options = parser.parse_args()
 
   this_dir = os.path.dirname(__file__)
   repo_root = os.path.join(this_dir, '..', '..')
 
   targets = []
+  use_prepare_header_only = True
   for source in options.source:
+    _, ext = os.path.splitext(source)
+    if ext not in ('.c', '.cc', '.cxx', '.cpp', '.m', '.mm', '.S',
+                   '.h', '.hxx', '.hpp', '.inc'):
+        use_prepare_header_only = False
     # source is repo root (cwd) relative,
     # but siso uses out dir relative target.
     target = os.path.relpath(source, start=options.out_dir) + "^"
     targets.append(target)
 
+  if _use_reclient(options.out_dir):
+    # b/335795623 ide_query compiler_arguments contain non-compiler arguments
+    sys.stderr.write(
+        'ide_query won\'t work well with "use_reclient=true"\n'
+        'Set "use_reclient=false" in args.gn.\n')
+    sys.exit(1)
   if options.perform_build:
-    if _use_reclient(options.out_dir):
-      args = ['autoninja', '-C', options.out_dir]
-    else:
-      args = ['siso', 'ninja', '-C', options.out_dir]
+    args = ['siso', 'ninja']
+    # use `-k=0` to build generated files as much as possible.
+    args.extend([
+        '-k=0',
+        '--prepare',
+        '-C',
+        options.out_dir,
+    ])
+    if options.log_dir:
+        args.extend(['-log_dir', options.log_dir])
     args.extend(targets)
-    p = subprocess.run(args, cwd=repo_root, capture_output=True)
-    if p.returncode != 0:
-      # TODO: report error in IdeAnalysis.Status?
-      sys.stderr.write('build failed with %d\n%s\n%s' % (
-          p.returncode, p.stdout, p.stderr))
-      return 1
+    env = os.environ.copy()
+    if use_prepare_header_only:
+        env['SISO_EXPERIMENTS'] = 'no-fast-deps,prepare-header-only'
+    else:
+        env['SISO_EXPERIMENTS'] = 'no-fast-deps'
+    with subprocess.Popen(
+        args,
+        cwd=repo_root,
+        env=env,
+        stderr=subprocess.STDOUT,
+        stdout=subprocess.PIPE,
+        universal_newlines=True
+    ) as p:
+      for line in p.stdout:
+          print(line, end='', file=sys.stderr)
+      # loop ends when program finishes, but must wait else returncode is None.
+      p.wait()
+      if p.returncode != 0:
+        # TODO: report error in IdeAnalysis.Status?
+        sys.stderr.write('build failed with %d\n' % p.returncode)
+        # even if build fails, it should report ideanalysis back.
 
   args = ['siso', 'query', 'ideanalysis', '-C', options.out_dir]
   args.extend(targets)

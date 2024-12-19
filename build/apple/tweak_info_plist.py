@@ -307,7 +307,7 @@ def Main(argv):
                     default=None,
                     help='The bundle id of the binary')
   parser.add_option('--platform',
-                    choices=('ios', 'mac'),
+                    choices=('ios', 'mac', 'watchos'),
                     default='mac',
                     help='The target platform of the bundle')
   parser.add_option('--add-gtm-metadata',
@@ -447,7 +447,7 @@ def Main(argv):
 
 
 if __name__ == '__main__':
-  # TODO(https://crbug.com/941669): Temporary workaround until all scripts use
+  # TODO(crbug.com/40618161): Temporary workaround until all scripts use
   # python3 by default.
   if sys.version_info[0] < 3:
     os.execvp('python3', ['python3'] + sys.argv)

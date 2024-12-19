@@ -48,6 +48,15 @@ def main():
       nargs="*")
   args = parser.parse_args()
 
+  # Abort if `TARGET` exists in the environment. Cargo sets `TARGET` when
+  # running build scripts and bindgen will try to be helpful by using that value
+  # if it's set. In practice we've seen a case where someone had the value set
+  # in their build environment with no intention of it reaching bindgen, leading
+  # to a hard-to-debug build error.
+  if 'TARGET' in os.environ:
+    sys.exit('ERROR: saw TARGET in environment, remove to avoid bindgen'
+             ' failures')
+
   with contextlib.ExitStack() as stack:
     # Args passed to the actual bindgen cli
     genargs = []
@@ -69,6 +78,12 @@ def main():
     # this would put the wrong name in the depfile.
     genargs.append('--output')
     genargs.append(args.output)
+
+    # The GN rules know what path to find the system headers in, and we want to
+    # use the headers we specify, instead of non-hermetic headers from elsewhere
+    # in the system.
+    genargs.append('--no-include-path-detection')
+
     if args.wrap_static_fns:
       wrap_static_fns = stack.enter_context(
           action_helpers.atomic_output(args.wrap_static_fns))

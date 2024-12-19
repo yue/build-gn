@@ -5,11 +5,12 @@
 """Siso configuration for rewriting remote calls into reproxy config."""
 
 load("@builtin//encoding.star", "json")
-load("@builtin//lib/gn.star", "gn")
 load("@builtin//path.star", "path")
+load("@builtin//runtime.star", "runtime")
 load("@builtin//struct.star", "module")
 load("./clang_code_coverage_wrapper.star", "clang_code_coverage_wrapper")
 load("./config.star", "config")
+load("./gn_logs.star", "gn_logs")
 load("./platform.star", "platform")
 load("./rewrapper_cfg.star", "rewrapper_cfg")
 
@@ -23,6 +24,7 @@ def __parse_rewrapper_cmdline(ctx, cmd):
     # Example command:
     #   ../../buildtools/reclient/rewrapper
     #     -cfg=../../buildtools/reclient_cfgs/chromium-browser-clang/rewrapper_linux.cfg
+    #     -inputs=build/config/unsafe_buffers_paths.txt
     #     -exec_root=/path/to/your/chromium/src/
     #     ../../third_party/llvm-build/Release+Asserts/bin/clang++
     #     [rest of clang args]
@@ -30,20 +32,50 @@ def __parse_rewrapper_cmdline(ctx, cmd):
     #   -exec_root: Siso already knows this.
     wrapped_command_pos = -1
     cfg_file = None
+    skip = ""
+    rw_cmd_opts = {}
     for i, arg in enumerate(cmd.args):
         if i == 0:
             continue
         if arg.startswith("-cfg="):
             cfg_file = ctx.fs.canonpath(arg.removeprefix("-cfg="))
             continue
+        if arg.startswith("-inputs=") or skip == "-inputs":
+            rw_cmd_opts["inputs"] = arg.removeprefix("-inputs=").split(",")
+            skip = ""
+            continue
+        if arg == "-inputs":
+            skip = arg
+            continue
         if not arg.startswith("-"):
             wrapped_command_pos = i
             break
     if wrapped_command_pos < 1:
-        fail("couldn't find first non-arg passed to rewrapper for %s" % str(cmd.args))
+        fail("couldn't find first non-arg passed to rewrapper from %s" % str(cmd.args))
     if not cfg_file:
-        return cmd.args[wrapped_command_pos:], None, True
-    return cmd.args[wrapped_command_pos:], rewrapper_cfg.parse(ctx, cfg_file), True
+        fail("couldn't find rewrapper cfg file from %s" % str(cmd.args))
+
+    # Config options are the lowest prioity.
+    rw_opts = rewrapper_cfg.parse(ctx, cfg_file)
+
+    # TODO: Read RBE_* envvars.
+    if runtime.os == "windows":
+        # Experimenting if longer timeouts resolve slow Windows developer builds. b/335525655
+        rw_opts.update({
+            "exec_timeout": "4m",
+            "reclient_timeout": "8m",
+        })
+    if runtime.os == "darwin":
+        # Mac gets timeouts occasionally on large input uploads (likely due to large invalidations)
+        # b/356981080
+        rw_opts.update({
+            "exec_timeout": "3m",
+            "reclient_timeout": "6m",
+        })
+
+    # Command line options are the highest priority.
+    rw_opts.update(rw_cmd_opts)
+    return cmd.args[wrapped_command_pos:], rw_opts, True
 
 def __parse_cros_rewrapper_cmdline(ctx, cmd):
     # fix cros sdk clang command line and extract rewrapper cfg.
@@ -80,6 +112,7 @@ def __parse_cros_rewrapper_cmdline(ctx, cmd):
         path.join(toolchainpath, "bin"),
         path.join(toolchainpath, "lib"),
         path.join(toolchainpath, "usr/bin"),
+        path.join(toolchainpath, "usr/lib64/clang"),
         # TODO: b/320189180 - Simple Chrome builds should use libraries under usr/lib64.
         # But, Ninja/Reclient also don't use them unexpectedly.
     ])
@@ -96,6 +129,7 @@ def __parse_clang_code_coverage_wrapper_cmdline(ctx, cmd):
     #     --files_to_instrument=...
     #     ../../buildtools/reclient/rewrapper
     #     -cfg=../../buildtools/reclient_cfgs/chromium-browser-clang/rewrapper_linux.cfg
+    #     -inputs=build/config/unsafe_buffers_paths.txt
     #     -exec_root=/path/to/your/chromium/src/
     #     ../../third_party/llvm-build/Release+Asserts/bin/clang++
     #     [rest of clang args]
@@ -105,6 +139,8 @@ def __parse_clang_code_coverage_wrapper_cmdline(ctx, cmd):
     rewrapper_pos = -1
     wrapped_command_pos = -1
     cfg_file = None
+    skip = None
+    rw_ops = {}
     for i, arg in enumerate(cmd.args):
         if i < 2:
             continue
@@ -113,6 +149,13 @@ def __parse_clang_code_coverage_wrapper_cmdline(ctx, cmd):
             continue
         if rewrapper_pos > 0 and arg.startswith("-cfg="):
             cfg_file = ctx.fs.canonpath(arg.removeprefix("-cfg="))
+            continue
+        if arg.startswith("-inputs=") or skip == "-inputs":
+            rw_ops["inputs"] = arg.removeprefix("-inputs=").split(",")
+            skip = ""
+            continue
+        if arg == "-inputs":
+            skip = arg
             continue
         if rewrapper_pos > 0 and not arg.startswith("-"):
             wrapped_command_pos = i
@@ -128,7 +171,11 @@ def __parse_clang_code_coverage_wrapper_cmdline(ctx, cmd):
     if len(clang_command) > 1 and "/chrome-sdk/" in clang_command[0]:
         # TODO: implement cros sdk support under code coverage wrapper
         fail("need to fix handler for cros sdk under code coverage wrapper")
-    return clang_command, rewrapper_cfg.parse(ctx, cfg_file)
+    rw_cfg_opts = rewrapper_cfg.parse(ctx, cfg_file)
+
+    # Command line options have higher priority than the ones in the cfg file.
+    rw_cfg_opts.update(rw_ops)
+    return clang_command, rw_cfg_opts
 
 def __rewrite_rewrapper(ctx, cmd, use_large = False):
     # If clang-coverage, needs different handling.
@@ -144,13 +191,13 @@ def __rewrite_rewrapper(ctx, cmd, use_large = False):
             return
     if not rwcfg:
         fail("couldn't find rewrapper cfg file in %s" % str(cmd.args))
-    if cmd.outputs[0] == ctx.fs.canonpath("./obj/third_party/abseil-cpp/absl/functional/any_invocable_test/any_invocable_test.o"):
-        # need longer timeout for any_invocable_test.o crbug.com/1484474
-        rwcfg.update({
-            "exec_timeout": "4m",
-        })
     if use_large:
-        if "platform" in rwcfg:
+        platform = rwcfg.get("platform", {})
+        if platform.get("OSFamily") == "Windows":
+            # Since there is no large Windows workers, it needs to run locally.
+            ctx.actions.fix(args = args)
+            return
+        if platform:
             action_key = None
             for key in rwcfg["platform"]:
                 if key.startswith("label:action_"):
@@ -163,6 +210,11 @@ def __rewrite_rewrapper(ctx, cmd, use_large = False):
         rwcfg["platform"].update({
             "label:action_large": "1",
         })
+
+        # Some large compiles take longer than the default timeout 2m.
+        # same as clang_exception.star.
+        rwcfg["exec_timeout"] = "10m"
+        rwcfg["reclient_timeout"] = "10m"
     ctx.actions.fix(
         args = args,
         reproxy_config = json.encode(rwcfg),
@@ -188,31 +240,12 @@ __handlers = {
     "strip_rewrapper": __strip_rewrapper,
 }
 
-def __use_remoteexec(ctx):
-    if "args.gn" in ctx.metadata:
-        gn_args = gn.args(ctx)
-        if gn_args.get("use_remoteexec") == "true":
-            return True
-    return False
+def __use_reclient(ctx):
+    return gn_logs.read(ctx).get("use_reclient") == "true"
 
 def __step_config(ctx, step_config):
     # New rules to convert commands calling rewrapper to use reproxy instead.
-    new_rules = [
-        # Disabling remote should always come first.
-        {
-            # TODO(b/281663988): missing headers.
-            "name": "b281663988/missing-headers",
-            "action_outs": [
-                "./obj/ui/qt/qt5_shim/qt_shim.o",
-                "./obj/ui/qt/qt6_shim/qt_shim.o",
-                "./obj/ui/qt/qt5_shim/qt5_shim_moc.o",
-                "./obj/ui/qt/qt6_shim/qt6_shim_moc.o",
-                "./obj/ui/qt/qt_interface/qt_interface.o",
-            ],
-            "remote": False,
-            "handler": "strip_rewrapper",
-        },
-    ]
+    new_rules = []
 
     # Disable racing on builders since bots don't have many CPU cores.
     # TODO: b/297807325 - Siso wants to handle local execution.
@@ -281,8 +314,9 @@ def __step_config(ctx, step_config):
             },
             "canonicalize_working_dir": rule.get("canonicalize_dir", False),
             "exec_strategy": exec_strategy,
-            "exec_timeout": rule.get("timeout", "10m"),
-            "reclient_timeout": rule.get("timeout", "10m"),
+            # TODO: crbug.com/380755128 - Make each compile unit smaller.
+            "exec_timeout": rule.get("timeout", "30m"),
+            "reclient_timeout": rule.get("timeout", "15m"),
             "download_outputs": True,
         }
         new_rules.append(rule)
@@ -292,7 +326,7 @@ def __step_config(ctx, step_config):
 
 reproxy = module(
     "reproxy",
-    enabled = __use_remoteexec,
+    enabled = __use_reclient,
     step_config = __step_config,
     filegroups = __filegroups,
     handlers = __handlers,

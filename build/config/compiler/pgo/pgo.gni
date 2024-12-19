@@ -8,7 +8,10 @@ import("//build/config/chromeos/ui_mode.gni")
 import("//build/config/cronet/config.gni")
 import("//build/config/dcheck_always_on.gni")
 import("//build/config/features.gni")
-import("//build/config/ios/config.gni")
+
+if (is_ios) {
+  import("//build/config/apple/mobile_config.gni")
+}
 
 declare_args() {
   # Specify the current PGO phase.
@@ -36,4 +39,7 @@ declare_args() {
 
   # When using chrome_pgo_phase = 2, read profile data from this path.
   pgo_data_path = ""
+
+  # Whether to enable temporal pgo or not (experimental).
+  temporal_pgo_profile = false
 }

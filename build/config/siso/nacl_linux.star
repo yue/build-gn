@@ -75,6 +75,22 @@ def __step_config(ctx, step_config):
             "timeout": "2m",
         },
         {
+            "name": "nacl/newlib_pnacl/alink",
+            "action": "newlib_pnacl_alink",
+            "remote": False,
+        },
+        {
+            "name": "nacl/newlib_pnacl/solink",
+            "action": "newlib_pnacl_solink",
+            "remote": False,
+        },
+        {
+            "name": "nacl/newlib_pnacl/link",
+            "action": "newlib_pnacl_link",
+            "remote": False,
+        },
+        # glibc
+        {
             "name": "nacl/glibc/x86_64-nacl-gcc",
             "action": "glibc_x64_cc",
             "inputs": [
@@ -87,12 +103,6 @@ def __step_config(ctx, step_config):
             "input_root_absolute_path": True,
         },
         {
-            "name": "nacl/pnacl-ar",
-            "action": "newlib_pnacl_alink",
-            "remote": False,
-        },
-        # glibc
-        {
             "name": "nacl/glibc/x86_64-nacl-g++",
             "action": "glibc_x64_cxx",
             "inputs": [
@@ -102,18 +112,24 @@ def __step_config(ctx, step_config):
             "remote": False,
         },
         {
-            "name": "nacl/glibc/x86_64-nacl-ar",
+            "name": "nacl/glibc/alink",
             "action": "glibc_x64_alink",
             # ELF-32 doesn't work on gVisor,
             "remote": False,
         },
         {
-            "name": "nacl/glibc/x86_64_solink/gcc_solink_wrapper",
+            "name": "nacl/glibc/solink",
             "action": "glibc_x64_solink",
             # ELF-32 doesn't work on gVisor,
             "remote": False,
         },
-        # pnacl_newlib
+        {
+            "name": "nacl/glibc/link",
+            "action": "glibc_x64_link",
+            # ELF-32 doesn't work on gVisor,
+            "remote": False,
+        },
+        # pnacl_newlib (clang_newlib_x64)
         {
             "name": "nacl/pnacl_newlib/x86_64-nacl-clang++",
             "action": "clang_newlib_x64_cxx",
@@ -137,11 +153,21 @@ def __step_config(ctx, step_config):
             "timeout": "2m",
         },
         {
-            "name": "nacl/pnacl_newlib/x86_64-nacl-ar",
+            "name": "nacl/pnacl_newlib/alink",
             "action": "clang_newlib_x64_alink",
             "remote": False,
         },
-        # saigo_newlib
+        {
+            "name": "nacl/pnacl_newlib/solink",
+            "action": "clang_newlib_x64_solink",
+            "remote": False,
+        },
+        {
+            "name": "nacl/pnacl_newlib/link",
+            "action": "clang_newlib_x64_link",
+            "remote": False,
+        },
+        # saigo_newlib (irt_x64, irt_arm)
         {
             "name": "nacl/saigo_newlib/x86_64-nacl-clang++",
             "action": "irt_x64_cxx",
@@ -165,9 +191,75 @@ def __step_config(ctx, step_config):
             "timeout": "2m",
         },
         {
-            "name": "nacl/saigo_newlib/x86_64-nacl-ar",
-            "action": "(.*_)?irt_x64_alink",
+            "name": "nacl/saigo_newlib/arm-nacl-clang++",
+            "action": "irt_arm_cxx",
+            "command_prefix": "../../native_client/toolchain/linux_x86/saigo_newlib/bin/arm-nacl-clang++",
+            "inputs": [
+                "native_client/toolchain/linux_x86/saigo_newlib/bin/arm-nacl-clang++",
+            ],
+            "remote": True,
+            "input_root_absolute_path": True,
+            "timeout": "2m",
+        },
+        {
+            "name": "nacl/saigo_newlib/arm-nacl-clang",
+            "action": "irt_arm_cc",
+            "command_prefix": "../../native_client/toolchain/linux_x86/saigo_newlib/bin/arm-nacl-clang",
+            "inputs": [
+                "native_client/toolchain/linux_x86/saigo_newlib/bin/arm-nacl-clang",
+            ],
+            "remote": True,
+            "input_root_absolute_path": True,
+            "timeout": "2m",
+        },
+        {
+            "name": "nacl/saigo_newlib/alink",
+            "action": "(.*_)?irt_(x64|arm)_alink",
             "remote": False,
+            "impure": True,
+        },
+        {
+            "name": "nacl/saigo_newlib/solink",
+            "action": "(.*_)?irt_(x64|arm)_solink",
+            "remote": False,
+            "impure": True,
+        },
+        {
+            "name": "nacl/saigo_newlib/link",
+            "action": "(.*_)?irt_(x64|arm)_link",
+            "remote": False,
+            "impure": True,
+        },
+        # nacl bootstrap
+        {
+            "name": "nacl/bootstrap/cc",
+            "action": "nacl_bootstrap_cc",
+            "remote": False,
+            "impure": True,
+        },
+        {
+            "name": "nacl/bootstrap/cxx",
+            "action": "nacl_bootstrap_cxx",
+            "remote": False,
+            "impure": True,
+        },
+        {
+            "name": "nacl/bootstrap/alink",
+            "action": "nacl_bootstrap_alink",
+            "remote": False,
+            "impure": True,
+        },
+        {
+            "name": "nacl/bootstrap/solink",
+            "action": "nacl_bootstrap_solink",
+            "remote": False,
+            "impure": True,
+        },
+        {
+            "name": "nacl/bootstrap/link",
+            "action": "nacl_bootstrap_link",
+            "remote": False,
+            "impure": True,
         },
     ])
 
@@ -187,6 +279,8 @@ def __step_config(ctx, step_config):
         "native_client/toolchain/linux_x86/saigo_newlib:headers": [
             "native_client/toolchain/linux_x86/saigo_newlib/bin/x86_64-nacl-clang",
             "native_client/toolchain/linux_x86/saigo_newlib/bin/x86_64-nacl-clang++",
+            "native_client/toolchain/linux_x86/saigo_newlib/bin/arm-nacl-clang",
+            "native_client/toolchain/linux_x86/saigo_newlib/bin/arm-nacl-clang++",
             "native_client/toolchain/linux_x86/saigo_newlib:header-files",
         ],
         "native_client/toolchain/linux_x86/pnacl_newlib/bin/pnacl-clang": [
@@ -232,6 +326,12 @@ def __step_config(ctx, step_config):
             "native_client/toolchain/linux_x86/nacl_x86_glibc/lib/gcc/x86_64-nacl:crtbegin",
             "native_client/toolchain/linux_x86/nacl_x86_glibc/libexec/gcc/x86_64-nacl:ccbackend",
             "native_client/toolchain/linux_x86/nacl_x86_glibc/x86_64-nacl/bin/as",
+        ],
+        "native_client/toolchain/linux_x86/saigo_newlib/bin/arm-nacl-clang++": [
+            "native_client/toolchain/linux_x86/saigo_newlib/bin:clang",
+        ],
+        "native_client/toolchain/linux_x86/saigo_newlib/bin/arm-nacl-clang": [
+            "native_client/toolchain/linux_x86/saigo_newlib/bin:clang",
         ],
     })
     return step_config

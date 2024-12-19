@@ -39,7 +39,7 @@ declare_args() {
 
   use_gio = false
 
-  use_blink = true
+  use_blink = !is_ios
 }
 #
 # =============================================
