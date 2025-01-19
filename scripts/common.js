@@ -32,11 +32,15 @@ const version = String(execSync('git describe --always --tags')).trim()
 
 // Get target_cpu from args.gn.
 let targetCpu = process.arch
+let ccWrapper = null
 if (fs.existsSync('out/Release/args.gn')) {
   const content = String(fs.readFileSync('out/Release/args.gn'))
-  const match = content.match(/target_cpu = "(.*)"/)
+  let match = content.match(/target_cpu = "(.*)"/)
   if (match && match.length > 1)
     targetCpu = match[1]
+  match = content.match(/cc_wrapper = "(.*)"/)
+  if (match && match.length > 1)
+    ccWrapper = match[1]
 }
 
 // Get target OS.
@@ -51,6 +55,9 @@ let verbose = false
 const argv = process.argv.slice(2).filter((arg) => {
   if (arg == '-v' || arg == '--verbose') {
     verbose = true
+    return false
+  } else if (arg.startsWith('--cc-wrapper=')) {
+    ccWrapper = arg.substr(arg.indexOf('=') + 1)
     return false
   } else if (arg.startsWith('--target-cpu=')) {
     targetCpu = arg.substr(arg.indexOf('=') + 1)
@@ -109,6 +116,7 @@ module.exports = {
   verbose,
   version,
   argv,
+  ccWrapper,
   targetCpu,
   targetOs,
   streamPromise,

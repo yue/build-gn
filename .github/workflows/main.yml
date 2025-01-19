@@ -29,11 +29,18 @@ jobs:
         run: sudo apt install -y binutils-aarch64-linux-gnu
 
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Use ccache
+        uses: hendrikmuhs/ccache-action@v1.2
+        with:
+          key: ccache-${{ matrix.os }}-${{ matrix.arch }}
 
       - name: Build
         run: |
-          node scripts/bootstrap.js --target-cpu=${{ matrix.arch }}
+          node scripts/bootstrap.js --target-cpu=${{ matrix.arch }} --cc-wrapper=ccache
           node scripts/build.js out/Release
 
       - name: Create distribution

@@ -4,7 +4,7 @@
 // Use of this source code is governed by the license that can be found in the
 // LICENSE file.
 
-const {argv, version, targetCpu, targetOs, execSync} = require('./common')
+const {argv, ccWrapper, version, targetCpu, targetOs, execSync} = require('./common')
 
 const path = require('path')
 const extract = require('./libs/extract-zip')
@@ -49,8 +49,9 @@ function runEachTest(project, projectPath) {
     execSync(`python3 ${path.join(tmppath, 'gn/tools/clang/scripts/update.py')}`)
   }
 
+  const args = ccWrapper ? `--args="cc_wrapper=\\"${ccWrapper}\\""` : ''
   const gn = path.join(tmppath, 'gn', 'gn')
-  execSync(`${gn} gen ${outdir}`, {cwd: projectPath})
+  execSync(`${gn} gen ${outdir} ${args}`, {cwd: projectPath})
 
   console.log(`Building project "${project}"...`)
   execSync(`ninja -C ${outdir}`)
