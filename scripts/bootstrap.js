@@ -4,7 +4,7 @@
 // Use of this source code is governed by the license that can be found in the
 // LICENSE file.
 
-const {targetCpu, targetOs, execSync, spawnSync} = require('./common')
+const {ccWrapper, targetCpu, targetOs, execSync, spawnSync} = require('./common')
 
 // Get the arch of sysroot.
 let sysrootArch = {
@@ -19,7 +19,7 @@ if (process.platform == 'linux') {
   execSync(`python3 build/linux/sysroot_scripts/install-sysroot.py --arch ${sysrootArch}`)
 }
 
-execSync('git submodule sync --recursive')
+execSync('git submodule sync --recursive', {stdio: 'ignore'})
 execSync('git submodule update --init --recursive')
 
 const commonConfig = [
@@ -38,6 +38,10 @@ const releaseConfig = [
   'is_official_build=true',
 ]
 
+if (ccWrapper) {
+  commonConfig.push(`cc_wrapper="${ccWrapper}"`,
+                    'clang_use_chrome_plugins=false')
+}
 if (targetOs == 'linux') {
   // Use prebuilt clang binaries.
   commonConfig.push('is_clang=true',
